@@ -25,6 +25,8 @@ interface TestResult {
   timestamp?: Date;
 }
 
+type TableName = 'conversations' | 'messages' | 'sellers' | 'clients' | 'materials' | 'notifications' | 'ai_recommendations' | 'quality_scores' | 'escalations' | 'audit_logs';
+
 export const PlatformHealthCheck: React.FC = () => {
   const [tests, setTests] = useState<TestResult[]>([
     { name: 'Conexão Supabase', status: 'pending' },
@@ -62,7 +64,7 @@ export const PlatformHealthCheck: React.FC = () => {
       
       updateTestStatus('Conexão Supabase', 'success', 'Conectado com sucesso');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       updateTestStatus('Conexão Supabase', 'error', `Erro: ${error.message}`);
       return false;
     }
@@ -71,7 +73,7 @@ export const PlatformHealthCheck: React.FC = () => {
   // Teste 2: Verificar se todas as tabelas existem
   const testTablesExist = async () => {
     updateTestStatus('Verificar Tabelas', 'running');
-    const requiredTables = [
+    const requiredTables: TableName[] = [
       'conversations', 'messages', 'sellers', 'clients', 
       'materials', 'notifications', 'ai_recommendations',
       'quality_scores', 'escalations', 'audit_logs'
@@ -81,12 +83,16 @@ export const PlatformHealthCheck: React.FC = () => {
       let tablesFound = 0;
       
       for (const table of requiredTables) {
-        const { error } = await supabase
-          .from(table)
-          .select('count')
-          .limit(1);
-          
-        if (!error) tablesFound++;
+        try {
+          const { error } = await supabase
+            .from(table)
+            .select('count')
+            .limit(1);
+            
+          if (!error) tablesFound++;
+        } catch (tableError) {
+          console.error(`Erro na tabela ${table}:`, tableError);
+        }
       }
       
       if (tablesFound === requiredTables.length) {
@@ -96,7 +102,7 @@ export const PlatformHealthCheck: React.FC = () => {
         updateTestStatus('Verificar Tabelas', 'error', `Apenas ${tablesFound}/10 tabelas encontradas`);
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       updateTestStatus('Verificar Tabelas', 'error', `Erro: ${error.message}`);
       return false;
     }
@@ -119,7 +125,7 @@ export const PlatformHealthCheck: React.FC = () => {
         updateTestStatus('Dados de Vendedores', 'error', 'Nenhum vendedor encontrado');
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       updateTestStatus('Dados de Vendedores', 'error', `Erro: ${error.message}`);
       return false;
     }
@@ -129,7 +135,7 @@ export const PlatformHealthCheck: React.FC = () => {
   const testRealTime = async () => {
     updateTestStatus('Real-time Subscriptions', 'running');
     
-    return new Promise((resolve) => {
+    return new Promise<boolean>((resolve) => {
       try {
         const channel = supabase
           .channel('health-check-channel')
@@ -158,7 +164,7 @@ export const PlatformHealthCheck: React.FC = () => {
           resolve(false);
         }, 5000);
         
-      } catch (error) {
+      } catch (error: any) {
         updateTestStatus('Real-time Subscriptions', 'error', `Erro: ${error.message}`);
         resolve(false);
       }
@@ -183,7 +189,7 @@ export const PlatformHealthCheck: React.FC = () => {
         updateTestStatus('Edge Function Webhook', 'error', `Status: ${response.status}`);
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       updateTestStatus('Edge Function Webhook', 'error', `Erro: ${error.message}`);
       return false;
     }
@@ -212,7 +218,7 @@ export const PlatformHealthCheck: React.FC = () => {
       
       updateTestStatus('Criar Conversa Teste', 'success', 'Conversa criada com sucesso');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       updateTestStatus('Criar Conversa Teste', 'error', `Erro: ${error.message}`);
       return false;
     }
@@ -240,7 +246,7 @@ export const PlatformHealthCheck: React.FC = () => {
       
       updateTestStatus('Sistema de Notificações', 'success', 'Notificação criada');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       updateTestStatus('Sistema de Notificações', 'error', `Erro: ${error.message}`);
       return false;
     }
@@ -273,7 +279,7 @@ export const PlatformHealthCheck: React.FC = () => {
       
       updateTestStatus('Limpeza de Dados Teste', 'success', `${cleanupCount} registros removidos`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       updateTestStatus('Limpeza de Dados Teste', 'error', `Erro: ${error.message}`);
       return false;
     }
@@ -285,7 +291,7 @@ export const PlatformHealthCheck: React.FC = () => {
     setOverallStatus('running');
     
     // Reset todos os status
-    setTests(prev => prev.map(test => ({ ...test, status: 'pending' })));
+    setTests(prev => prev.map(test => ({ ...test, status: 'pending' as const })));
     
     const testFunctions = [
       testSupabaseConnection,
