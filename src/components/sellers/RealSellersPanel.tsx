@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Phone, Star, Users, Zap, Wrench, Building, Clock, CheckCircle } from 'lucide-react';
-import type { RealSeller } from '@/data/realSellersData';
+import { convertDatabaseSellerToRealSeller, type RealSeller } from '@/data/realSellersData';
 
 export const RealSellersPanel = () => {
   const [sellers, setSellers] = useState<RealSeller[]>([]);
@@ -34,7 +34,8 @@ export const RealSellersPanel = () => {
         }
         
         console.log('✅ Vendedores carregados:', data?.length || 0);
-        setSellers(data || []);
+        const convertedSellers = (data || []).map(convertDatabaseSellerToRealSeller);
+        setSellers(convertedSellers);
       } catch (error) {
         console.error('❌ Erro na busca de vendedores:', error);
         toast({

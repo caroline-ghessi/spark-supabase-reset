@@ -1,4 +1,6 @@
 
+import type { Database } from '@/integrations/supabase/types';
+
 export interface RealSeller {
   id: string;
   name: string;
@@ -20,7 +22,36 @@ export interface RealSeller {
     role?: string;
     whapi_integrated?: boolean;
   };
+  created_at?: string;
+  updated_at?: string;
 }
+
+// Type alias for the database seller type
+export type DatabaseSeller = Database['public']['Tables']['sellers']['Row'];
+
+// Helper function to convert database seller to RealSeller
+export const convertDatabaseSellerToRealSeller = (dbSeller: DatabaseSeller): RealSeller => {
+  return {
+    id: dbSeller.id,
+    name: dbSeller.name,
+    email: dbSeller.email,
+    phone: dbSeller.phone,
+    whatsapp_number: dbSeller.whatsapp_number,
+    position: dbSeller.position || '',
+    specialties: dbSeller.specialties || [],
+    performance_score: dbSeller.performance_score || 0,
+    status: dbSeller.status || 'active',
+    metadata: (dbSeller.metadata as any) || {
+      description: '',
+      performance_level: 'average',
+      spin_trained: false,
+      spin_expertise: '',
+      categoria: ''
+    },
+    created_at: dbSeller.created_at || undefined,
+    updated_at: dbSeller.updated_at || undefined
+  };
+};
 
 export const spinTrainingByCategory = {
   ferramentas: {

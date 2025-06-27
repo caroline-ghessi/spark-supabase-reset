@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { Database } from '@/integrations/supabase/types';
 
 export interface AIAgent {
   id: string;
@@ -15,6 +16,25 @@ export interface AIAgent {
   created_at: string;
   updated_at: string;
 }
+
+// Type alias for the database AI agent type
+type DatabaseAIAgent = Database['public']['Tables']['ai_agents_config']['Row'];
+
+// Helper function to convert database AI agent to AIAgent
+const convertDatabaseAIAgentToAIAgent = (dbAgent: DatabaseAIAgent): AIAgent => {
+  return {
+    id: dbAgent.id,
+    agent_id: dbAgent.agent_id,
+    name: dbAgent.name,
+    description: dbAgent.description || '',
+    status: (dbAgent.status as 'active' | 'inactive') || 'active',
+    version: dbAgent.version || '1.0',
+    prompt: dbAgent.prompt,
+    configuration: dbAgent.configuration || {},
+    created_at: dbAgent.created_at || '',
+    updated_at: dbAgent.updated_at || ''
+  };
+};
 
 export const useAIAgents = () => {
   const [agents, setAgents] = useState<AIAgent[]>([]);
@@ -41,7 +61,8 @@ export const useAIAgents = () => {
       }
 
       console.log('✅ Agentes carregados:', data?.length || 0);
-      setAgents(data || []);
+      const convertedAgents = (data || []).map(convertDatabaseAIAgentToAIAgent);
+      setAgents(convertedAgents);
     } catch (error) {
       console.error('❌ Erro na busca de agentes:', error);
       toast({
