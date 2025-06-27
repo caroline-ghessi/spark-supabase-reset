@@ -15,7 +15,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_conversations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          client_phone: string
+          client_name: string
+          status: string
+          lead_temperature: string
+          source: string
+          dify_conversation_id: string
+          potential_value: number
+          priority: string
+          assigned_seller_id: string
+          metadata: Json
+          created_at: string
+          updated_at: string
+          closed_at: string
+        }[]
+      }
+      get_messages: {
+        Args: { conv_id: string }
+        Returns: {
+          id: string
+          conversation_id: string
+          sender_type: string
+          sender_name: string
+          content: string
+          message_type: string
+          file_url: string
+          file_name: string
+          file_size: number
+          whatsapp_message_id: string
+          status: string
+          metadata: Json
+          created_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

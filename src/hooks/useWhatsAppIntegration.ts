@@ -107,7 +107,7 @@ export const useWhatsAppIntegration = () => {
 
   const loadConversations = async () => {
     try {
-      // Use generic query since types aren't available yet
+      // Use RPC function to get conversations
       const { data, error } = await supabase
         .rpc('get_conversations');
 
@@ -133,9 +133,9 @@ export const useWhatsAppIntegration = () => {
 
   const loadMessages = async (conversationId: string) => {
     try {
-      // Use generic query since types aren't available yet
+      // Use RPC function to get messages - note parameter name is 'conv_id'
       const { data, error } = await supabase
-        .rpc('get_messages', { conversation_id: conversationId });
+        .rpc('get_messages', { conv_id: conversationId });
 
       if (error) {
         console.error('Error loading messages:', error);
