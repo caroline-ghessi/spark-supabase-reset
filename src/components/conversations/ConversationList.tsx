@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Search, Filter, MessageCircle, SlidersHorizontal } from 'lucide-react';
 import { Conversation } from '../../types/conversation';
-import { ConversationCard } from './ConversationCard';
+import { LegacyConversationCard } from './LegacyConversationCard';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -143,7 +143,7 @@ export const ConversationList = ({
         ) : (
           <div className="space-y-1 p-2">
             {filteredConversations.map((conversation) => (
-              <ConversationCard
+              <LegacyConversationCard
                 key={conversation.id}
                 conversation={conversation}
                 isSelected={selectedConversation?.id === conversation.id}
