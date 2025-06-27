@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { ConversationList } from '../conversations/ConversationList';
@@ -5,6 +6,7 @@ import { ChatPanel } from '../chat/ChatPanel';
 import { MonitoringPanel } from '../monitoring/MonitoringPanel';
 import { MetricsPanel } from '../metrics/MetricsPanel';
 import { SettingsPanel } from '../settings/SettingsPanel';
+import { UsersAndLibraryPanel } from '../users/UsersAndLibraryPanel';
 import { Conversation } from '../../types/conversation';
 import { mockConversations, mockMessages } from '../../data/mockData';
 
@@ -37,6 +39,8 @@ export const AppLayout = () => {
         return <MetricsPanel />;
       case 'settings':
         return <SettingsPanel />;
+      case 'users':
+        return <UsersAndLibraryPanel />;
       default:
         return (
           <div className="flex h-full">
