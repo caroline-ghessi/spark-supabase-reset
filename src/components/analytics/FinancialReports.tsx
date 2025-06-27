@@ -139,7 +139,7 @@ export const FinancialReports = () => {
                 <p className="text-xl font-bold text-orange-700">3.7:1</p>
                 <p className="text-sm text-orange-600">Razão LTV/CAC</p>
                 <div className="flex items-center space-x-1 mt-1">
-                  <span className="text-xs text-gray-600">Excelente (>3:1)</span>
+                  <span className="text-xs text-gray-600">Excelente (&gt;3:1)</span>
                 </div>
               </div>
             </div>
