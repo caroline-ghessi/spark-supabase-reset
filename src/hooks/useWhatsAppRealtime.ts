@@ -16,37 +16,54 @@ export const useWhatsAppRealtime = ({
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('🔌 Inicializando real-time subscriptions...');
+
     const conversationsChannel = supabase
-      .channel('conversations-channel')
+      .channel('conversations-realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'conversations'
       }, (payload) => {
+        console.log('🔄 Mudança na conversa:', payload);
+        
         if (payload.eventType === 'INSERT') {
-          setConversations(prev => [payload.new as RealConversation, ...prev]);
+          const newConversation = payload.new as RealConversation;
+          setConversations(prev => [newConversation, ...prev]);
+          
           toast({
             title: "Nova Conversa",
-            description: `Cliente: ${(payload.new as RealConversation).client_name}`,
+            description: `Cliente: ${newConversation.client_name}`,
+            className: "bg-green-500 text-white",
           });
         } else if (payload.eventType === 'UPDATE') {
+          const updatedConversation = payload.new as RealConversation;
           setConversations(prev => 
             prev.map(conv => 
-              conv.id === payload.new.id ? payload.new as RealConversation : conv
+              conv.id === updatedConversation.id ? updatedConversation : conv
             )
           );
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Status conversations subscription:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Conversations real-time ativo');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Erro na subscription de conversas');
+        }
+      });
 
     const messagesChannel = supabase
-      .channel('messages-channel')
+      .channel('messages-realtime')
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'messages'
       }, (payload) => {
+        console.log('💬 Nova mensagem real-time:', payload.new);
         const newMessage = payload.new as RealMessage;
+        
         setMessages(prev => ({
           ...prev,
           [newMessage.conversation_id]: [
@@ -64,11 +81,40 @@ export const useWhatsAppRealtime = ({
           });
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Status messages subscription:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Messages real-time ativo');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Erro na subscription de mensagens');
+        }
+      });
+
+    const notificationsChannel = supabase
+      .channel('notifications-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications'
+      }, (payload) => {
+        console.log('🔔 Nova notificação:', payload.new);
+        const notification = payload.new as any;
+        
+        toast({
+          title: notification.title,
+          description: notification.message,
+          className: notification.priority === 'high' ? "bg-red-500 text-white" : "bg-blue-500 text-white",
+        });
+      })
+      .subscribe((status) => {
+        console.log('📡 Status notifications subscription:', status);
+      });
 
     return () => {
+      console.log('🔌 Removendo real-time subscriptions...');
       supabase.removeChannel(conversationsChannel);
       supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(notificationsChannel);
     };
   }, [setConversations, setMessages, toast]);
 };

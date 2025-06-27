@@ -9,20 +9,28 @@ export const useMessages = () => {
   const { toast } = useToast();
 
   const loadMessages = async (conversationId: string) => {
+    console.log(`📨 Carregando mensagens para conversa: ${conversationId}`);
+    
     try {
       const { data, error } = await supabase
         .rpc('get_messages', { conv_id: conversationId });
 
       if (error) {
-        console.error('Error loading messages:', error);
+        console.error('❌ Erro ao carregar mensagens:', error);
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar mensagens",
+          variant: "destructive",
+        });
       } else {
+        console.log(`✅ Mensagens carregadas para ${conversationId}:`, data?.length || 0);
         setMessages(prev => ({
           ...prev,
           [conversationId]: (data || []) as RealMessage[]
         }));
       }
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error('❌ Erro na busca de mensagens:', error);
       toast({
         title: "Erro",
         description: "Falha ao carregar mensagens",
@@ -32,6 +40,8 @@ export const useMessages = () => {
   };
 
   const sendMessage = async (conversationId: string, message: string) => {
+    console.log(`📤 Enviando mensagem para conversa: ${conversationId}`);
+    
     try {
       const response = await supabase.functions.invoke('send-whatsapp-message', {
         body: {
@@ -44,6 +54,7 @@ export const useMessages = () => {
         throw new Error(response.error.message);
       }
 
+      console.log('✅ Mensagem enviada com sucesso');
       toast({
         title: "Mensagem Enviada",
         description: "Mensagem enviada com sucesso!",
@@ -52,7 +63,7 @@ export const useMessages = () => {
 
       return response.data;
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Erro ao enviar mensagem:', error);
       toast({
         title: "Erro",
         description: "Falha ao enviar mensagem",
