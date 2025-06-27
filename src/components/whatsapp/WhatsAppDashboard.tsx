@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WhatsAppConversationsList } from './WhatsAppConversationsList';
 import { WhatsAppChatInterface } from './WhatsAppChatInterface';
+import { WhatsAppTestPanel } from './WhatsAppTestPanel';
 import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
 import { RealConversation } from '@/types/whatsapp';
-import { MessageSquare, Bot, User, Clock, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Bot, User, Clock, AlertTriangle, TestTube } from 'lucide-react';
 
 export const WhatsAppDashboard: React.FC = () => {
   const {
@@ -126,43 +128,62 @@ export const WhatsAppDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Interface Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Lista de Conversas */}
-        <div className="lg:col-span-1">
-          <WhatsAppConversationsList
-            conversations={conversations}
-            selectedConversationId={selectedConversation?.id}
-            onSelectConversation={handleSelectConversation}
-            onRefresh={loadConversations}
-            loading={loading}
-          />
-        </div>
+      {/* Interface Principal com Abas */}
+      <Tabs defaultValue="chat" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="chat" className="flex items-center space-x-2">
+            <MessageSquare className="w-4 h-4" />
+            <span>Chat</span>
+          </TabsTrigger>
+          <TabsTrigger value="diagnostics" className="flex items-center space-x-2">
+            <TestTube className="w-4 h-4" />
+            <span>Diagnóstico</span>
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="chat">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Lista de Conversas */}
+            <div className="lg:col-span-1">
+              <WhatsAppConversationsList
+                conversations={conversations}
+                selectedConversationId={selectedConversation?.id}
+                onSelectConversation={handleSelectConversation}
+                onRefresh={loadConversations}
+                loading={loading}
+              />
+            </div>
 
-        {/* Interface de Chat */}
-        <div className="lg:col-span-2">
-          {selectedConversation ? (
-            <WhatsAppChatInterface
-              conversation={selectedConversation}
-              messages={messages[selectedConversation.id] || []}
-              onSendMessage={handleSendMessage}
-              onTakeControl={handleTakeControl}
-            />
-          ) : (
-            <Card className="h-full flex items-center justify-center">
-              <CardContent className="text-center">
-                <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Selecione uma conversa
-                </h3>
-                <p className="text-gray-600">
-                  Escolha uma conversa da lista para começar o atendimento
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+            {/* Interface de Chat */}
+            <div className="lg:col-span-2">
+              {selectedConversation ? (
+                <WhatsAppChatInterface
+                  conversation={selectedConversation}
+                  messages={messages[selectedConversation.id] || []}
+                  onSendMessage={handleSendMessage}
+                  onTakeControl={handleTakeControl}
+                />
+              ) : (
+                <Card className="h-full flex items-center justify-center">
+                  <CardContent className="text-center">
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Selecione uma conversa
+                    </h3>
+                    <p className="text-gray-600">
+                      Escolha uma conversa da lista para começar o atendimento
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="diagnostics">
+          <WhatsAppTestPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
