@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { ConversationsDashboard } from '../conversations/ConversationsDashboard';
-import { MonitoringPanel } from '../monitoring/MonitoringPanel';
+import { RealSellersPanel } from '../sellers/RealSellersPanel';
 import { MetricsPanel } from '../metrics/MetricsPanel';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { SettingsPanel } from '../settings/SettingsPanel';
@@ -23,7 +23,7 @@ export const MainLayout: React.FC = () => {
           />
         );
       case 'sellers':
-        return <MonitoringPanel />;
+        return <RealSellersPanel />;
       case 'metrics':
         return <MetricsPanel />;
       case 'notifications':
