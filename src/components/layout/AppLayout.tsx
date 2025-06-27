@@ -72,7 +72,7 @@ export const AppLayout = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar onMenuChange={setActiveMenu} />
+      <Sidebar />
       
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
