@@ -1,125 +1,82 @@
 
-import { MessageCircle, Users, BarChart3, Settings, Bot } from 'lucide-react';
-import { useState } from 'react';
-import { NotificationBadge } from '../notifications/NotificationBadge';
-import { useNotifications } from '@/contexts/NotificationContext';
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { 
+  MessageSquare, 
+  BarChart3, 
+  Users, 
+  Settings, 
+  Bell,
+  Monitor,
+  BookOpen,
+  FileText,
+  Phone
+} from 'lucide-react';
 
-const menuItems = [
-  { icon: MessageCircle, label: 'Conversas Ativas', id: 'conversations', active: true },
-  { icon: Users, label: 'Painel Vendedores', id: 'salespeople' },
-  { icon: BarChart3, label: 'Métricas', id: 'metrics' },
-  { icon: Settings, label: 'Configurações', id: 'settings' },
+const navigation = [
+  { name: 'WhatsApp', href: '/', icon: Phone, current: false },
+  { name: 'Conversas', href: '/conversations', icon: MessageSquare, current: false },
+  { name: 'Monitoramento', href: '/monitoring', icon: Monitor, current: false },
+  { name: 'Biblioteca', href: '/library', icon: BookOpen, current: false },
+  { name: 'Usuários', href: '/users', icon: Users, current: false },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3, current: false },
+  { name: 'Auditoria', href: '/audit', icon: FileText, current: false },
+  { name: 'Notificações', href: '/notifications', icon: Bell, current: false },
+  { name: 'Configurações', href: '/settings', icon: Settings, current: false },
 ];
 
-interface SidebarProps {
-  onMenuChange?: (menuId: string) => void;
-}
-
-export const Sidebar = ({ onMenuChange }: SidebarProps) => {
-  const [activeItem, setActiveItem] = useState('conversations');
-  const { notifications } = useNotifications();
-
-  // Calculate badges for each menu item
-  const getBadgeCount = (menuId: string) => {
-    switch (menuId) {
-      case 'conversations':
-        return notifications.filter(n => 
-          !n.lida && ['nova_mensagem', 'cliente_aguardando'].includes(n.tipo)
-        ).length;
-      case 'salespeople':
-        return notifications.filter(n => 
-          !n.lida && ['vendedor_inativo', 'recomendacao_ia'].includes(n.tipo)
-        ).length;
-      case 'metrics':
-        return notifications.filter(n => 
-          !n.lida && ['meta_atingida', 'relatorio_disponivel'].includes(n.tipo)
-        ).length;
-      default:
-        return 0;
-    }
-  };
-
-  const getBadgeType = (menuId: string) => {
-    switch (menuId) {
-      case 'conversations':
-        const hasUrgent = notifications.some(n => 
-          !n.lida && n.prioridade === 'critica' && ['nova_mensagem', 'cliente_aguardando'].includes(n.tipo)
-        );
-        return hasUrgent ? 'urgent' : 'default';
-      case 'salespeople':
-        const hasWarning = notifications.some(n => 
-          !n.lida && n.prioridade === 'alta' && ['vendedor_inativo'].includes(n.tipo)
-        );
-        return hasWarning ? 'warning' : 'default';
-      default:
-        return 'default';
-    }
-  };
-
-  const handleMenuClick = (itemId: string) => {
-    setActiveItem(itemId);
-    onMenuChange?.(itemId);
-  };
+export const Sidebar = () => {
+  const location = useLocation();
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-gray-200">
+    <div className="flex flex-col w-64 bg-white border-r border-gray-200">
+      <div className="flex items-center h-16 px-4 border-b border-gray-200">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-            <Bot className="w-5 h-5 text-white" />
+            <Phone className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">WhatsApp Sales</h1>
-            <p className="text-sm text-gray-500">Gestão Inteligente</p>
+            <h1 className="text-lg font-semibold text-gray-900">WhatsApp CRM</h1>
+            <p className="text-xs text-gray-500">Gestão de Vendas</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeItem === item.id;
-          const badgeCount = getBadgeCount(item.id);
-          const badgeType = getBadgeType(item.id);
-          
+      <nav className="flex-1 px-4 py-6 space-y-1">
+        {navigation.map((item) => {
+          const isActive = location.pathname === item.href;
           return (
-            <button
-              key={item.id}
-              onClick={() => handleMenuClick(item.id)}
-              className={`relative w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                isActive 
-                  ? 'bg-orange-50 text-orange-600 border border-orange-200' 
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
-              {badgeCount > 0 && (
-                <NotificationBadge 
-                  count={badgeCount} 
-                  type={badgeType}
-                  className="ml-auto"
-                />
+            <Link
+              key={item.name}
+              to={item.href}
+              className={cn(
+                'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                isActive
+                  ? 'bg-orange-100 text-orange-900'
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
               )}
-            </button>
+            >
+              <item.icon
+                className={cn(
+                  'mr-3 h-5 w-5 flex-shrink-0',
+                  isActive ? 'text-orange-500' : 'text-gray-400 group-hover:text-gray-500'
+                )}
+              />
+              {item.name}
+            </Link>
           );
         })}
       </nav>
 
-      {/* Status Indicators */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Status Sistema</span>
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+      <div className="border-t border-gray-200 p-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+            <span className="text-sm font-medium text-white">C</span>
           </div>
-          <div className="text-xs text-gray-500">
-            <div>Bot: Online</div>
-            <div>API: Conectada</div>
-            <div>Conversas: 12 ativas</div>
-            <div>IA: Monitorando</div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">Carol</p>
+            <p className="text-xs text-gray-500">Supervisora</p>
           </div>
         </div>
       </div>

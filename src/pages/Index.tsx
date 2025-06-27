@@ -1,8 +1,8 @@
 
-import { AppLayout } from '../components/layout/AppLayout';
+import { WhatsAppDashboard } from '@/components/whatsapp/WhatsAppDashboard';
 
 const Index = () => {
-  return <AppLayout />;
+  return <WhatsAppDashboard />;
 };
 
 export default Index;
