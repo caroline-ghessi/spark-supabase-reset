@@ -279,6 +279,7 @@ export const mockEscalationRules: EscalationRule[] = [
       {
         tipo: "notificar_inapp",
         destinatario: "carol",
+        template: "escalacao_interna",
         prioridade: "critica"
       }
     ]
