@@ -1,4 +1,3 @@
-
 export interface Material {
   id: number;
   nome: string;
@@ -130,6 +129,7 @@ export const mockLibraryData: Category[] = [
         tamanho: "45MB",
         resolucao: "1080p",
         criadoEm: "2024-01-12",
+        criadoPor: "Carol",
         url: "/videos/demo-sensor-iot.mp4",
         thumbnail: "/thumbs/demo-sensor.jpg",
         tags: ["sensor", "iot", "demo", "tecnico"],
@@ -162,6 +162,7 @@ export const mockLibraryData: Category[] = [
         tamanho: "3.2MB",
         paginas: 24,
         criadoEm: "2024-01-09",
+        criadoPor: "Carol",
         url: "/docs/especificacoes-tecnicas.pdf",
         tags: ["especificacao", "tecnico", "detalhado"],
         restricao: "apenas_vendedores",
@@ -194,6 +195,7 @@ export const mockLibraryData: Category[] = [
         versao: "1.2",
         criadoEm: "2024-01-01",
         atualizadoEm: "2024-01-15",
+        criadoPor: "Carol",
         url: "/pricing/tabela-precos-q1.xlsx",
         tags: ["precos", "confidencial", "vendas"],
         restricao: "confidencial",
