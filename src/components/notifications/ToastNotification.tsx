@@ -95,8 +95,8 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
 
   return (
     <div className={`
-      fixed top-4 right-4 z-50 max-w-sm w-full bg-white rounded-lg shadow-lg border-l-4 ${styles.border} ${styles.bg}
-      transform transition-all duration-300 ease-out
+      max-w-sm w-full bg-white rounded-lg shadow-lg border-l-4 ${styles.border} ${styles.bg}
+      transform transition-all duration-300 ease-out overflow-hidden
       ${isVisible && !isLeaving ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
       ${notification.prioridade === 'critica' ? 'animate-pulse' : ''}
     `}>
@@ -105,20 +105,20 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
           <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${styles.icon}`}>
             <Icon className="w-4 h-4" />
           </div>
-          <div className="ml-3 flex-1">
+          <div className="ml-3 flex-1 min-w-0">
             <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
                   {notification.titulo}
                 </p>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-gray-600 mt-1 break-words">
                   {notification.mensagem}
                 </p>
                 
                 {notification.contexto && (
                   <div className="mt-2 text-xs text-gray-500">
                     {notification.contexto.cliente && (
-                      <div>Cliente: {notification.contexto.cliente}</div>
+                      <div className="truncate">Cliente: {notification.contexto.cliente}</div>
                     )}
                     {notification.contexto.valorPotencial && (
                       <div>Valor: R$ {notification.contexto.valorPotencial.toLocaleString()}</div>
@@ -162,7 +162,7 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
       {notification.prioridade !== 'critica' && (
         <div className="h-1 bg-gray-200">
           <div 
-            className={`h-full ${styles.button.replace('hover:bg-', 'bg-').replace('bg-', 'bg-')} transition-all duration-[8000ms] ease-linear`}
+            className={`h-full bg-gray-400 transition-all duration-[8000ms] ease-linear`}
             style={{ 
               width: isVisible ? '0%' : '100%',
               transition: isVisible ? 'width 8s linear' : 'none'

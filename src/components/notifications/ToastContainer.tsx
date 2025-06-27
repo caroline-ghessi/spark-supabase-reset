@@ -36,15 +36,17 @@ export const ToastContainer: React.FC = () => {
     // This could navigate to different parts of the app
   };
 
+  if (activeToasts.length === 0) return null;
+
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 pointer-events-none">
+    <div className="fixed top-4 right-4 z-[100] space-y-2 pointer-events-none max-w-sm">
       {activeToasts.map((notification, index) => (
         <div
           key={notification.id}
           className="pointer-events-auto"
           style={{ 
             transform: `translateY(${index * 10}px)`,
-            zIndex: 50 - index 
+            zIndex: 100 - index 
           }}
         >
           <ToastNotification

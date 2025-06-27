@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Settings, Pin, X, Clock, MessageCircle, Lightbulb, Trophy, UserPlus, UserX, Filter } from 'lucide-react';
+import { Bell, Settings, Pin, X, Clock, MessageCircle, Lightbulb, Trophy, UserPlus, UserX } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -145,7 +145,7 @@ export const NotificationCenter: React.FC = () => {
                 <select 
                   value={filter}
                   onChange={(e) => setFilter(e.target.value as any)}
-                  className="text-xs border rounded px-2 py-1 flex-1"
+                  className="text-xs border rounded px-2 py-1 flex-1 bg-white"
                 >
                   <option value="todas">Todas</option>
                   <option value="nao_lidas">Não Lidas</option>
@@ -156,7 +156,7 @@ export const NotificationCenter: React.FC = () => {
                 <select 
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value as any)}
-                  className="text-xs border rounded px-2 py-1 flex-1"
+                  className="text-xs border rounded px-2 py-1 flex-1 bg-white"
                 >
                   <option value="todos_tipos">Todos</option>
                   <option value="clientes">Clientes</option>
@@ -177,7 +177,7 @@ export const NotificationCenter: React.FC = () => {
             </div>
 
             {/* Notifications List */}
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               {/* Pinned Notifications */}
               {pinnedNotifications.length > 0 && (
                 <div className="p-2 bg-yellow-50 border-b">
