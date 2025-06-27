@@ -7,96 +7,108 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface WhatsAppMessage {
-  id: string;
-  from: string;
-  timestamp: string;
-  type: string;
-  text?: { body: string };
-  image?: { id: string; caption?: string };
-  document?: { id: string; filename: string; caption?: string };
-  audio?: { id: string };
-  video?: { id: string; caption?: string };
-}
-
-interface WebhookEntry {
-  changes: Array<{
-    field: string;
-    value: {
-      messages?: WhatsAppMessage[];
-      contacts?: Array<{ profile?: { name: string } }>;
-      metadata: { phone_number_id: string };
-    };
-  }>;
-}
-
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  )
-
   try {
-    // Verificação do webhook (GET)
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    console.log(`🌐 ${req.method} Request received`)
+    console.log(`📋 URL: ${req.url}`)
+
+    // GET - Verificação do webhook pela Meta
     if (req.method === 'GET') {
       const url = new URL(req.url)
       const mode = url.searchParams.get('hub.mode')
       const token = url.searchParams.get('hub.verify_token')
       const challenge = url.searchParams.get('hub.challenge')
 
-      if (mode === 'subscribe' && token === Deno.env.get('WEBHOOK_VERIFY_TOKEN')) {
-        console.log('Webhook verificado com sucesso!')
-        return new Response(challenge, { status: 200 })
-      }
+      console.log('🔍 Webhook verification:', { mode, token, challenge })
 
-      return new Response('Forbidden', { status: 403 })
+      if (mode === 'subscribe' && token === Deno.env.get('WEBHOOK_VERIFY_TOKEN')) {
+        console.log('✅ Webhook verified successfully!')
+        return new Response(challenge, {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+        })
+      } else {
+        console.log('❌ Webhook verification failed')
+        return new Response('Forbidden', {
+          status: 403,
+          headers: corsHeaders
+        })
+      }
     }
 
-    // Processar mensagens recebidas (POST)
+    // POST - Processar mensagens recebidas
     if (req.method === 'POST') {
       const body = await req.json()
+      console.log('📱 Webhook payload:', JSON.stringify(body, null, 2))
 
       if (body.object === 'whatsapp_business_account') {
-        for (const entry of body.entry as WebhookEntry[]) {
+        for (const entry of body.entry) {
           for (const change of entry.changes) {
-            if (change.field === 'messages' && change.value.messages) {
-              await processIncomingMessages(supabase, change.value)
+            if (change.field === 'messages') {
+              console.log('💬 Processing messages:', change.value)
+              await processIncomingMessage(supabaseClient, change.value)
             }
           }
         }
       }
 
-      return new Response('EVENT_RECEIVED', { status: 200, headers: corsHeaders })
+      return new Response('EVENT_RECEIVED', {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+      })
     }
 
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+    // Método não suportado
+    return new Response('Method Not Allowed', {
+      status: 405,
+      headers: corsHeaders
+    })
 
   } catch (error) {
-    console.error('Erro no webhook WhatsApp:', error)
-    return new Response('Internal Server Error', { status: 500, headers: corsHeaders })
+    console.error('❌ Error in webhook:', error)
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
   }
 })
 
-async function processIncomingMessages(supabase: any, messageData: any) {
-  const { messages, contacts, metadata } = messageData
+// Função para processar mensagens recebidas
+async function processIncomingMessage(supabase: any, messageData: any) {
+  try {
+    const { messages, contacts, metadata } = messageData
 
-  if (!messages || messages.length === 0) return
+    if (!messages || messages.length === 0) {
+      console.log('⚠️ No messages in payload')
+      return
+    }
 
-  for (const message of messages) {
-    // Ignorar mensagens enviadas pelo próprio sistema
-    if (message.from === metadata.phone_number_id) continue
+    for (const message of messages) {
+      // Ignorar mensagens enviadas por nós
+      if (message.from === metadata?.phone_number_id) {
+        console.log('⏭️ Skipping outbound message')
+        continue
+      }
 
-    const clientPhone = message.from
-    const clientName = contacts?.[0]?.profile?.name || 'Cliente'
-    const messageContent = extractMessageContent(message)
+      const clientPhone = message.from
+      const clientName = contacts?.[0]?.profile?.name || 'Cliente'
+      const messageContent = extractMessageContent(message)
 
-    try {
+      console.log(`👤 Processing message from ${clientName} (${clientPhone})`)
+
       // 1. Buscar ou criar conversa
       const conversation = await findOrCreateConversation(supabase, clientPhone, clientName)
+      console.log(`💬 Conversation ID: ${conversation.id}`)
 
       // 2. Salvar mensagem no banco
       await saveMessageToDatabase(supabase, {
@@ -107,35 +119,37 @@ async function processIncomingMessages(supabase: any, messageData: any) {
         message_type: messageContent.type,
         file_url: messageContent.fileUrl,
         whatsapp_message_id: message.id,
-        created_at: new Date(parseInt(message.timestamp) * 1000).toISOString()
+        created_at: new Date(message.timestamp * 1000).toISOString()
       })
 
-      // 3. Processar com Bot Dify se a conversa estiver no modo bot
+      // 3. Processar com Bot Dify (se conversa estiver em modo bot)
       if (conversation.status === 'bot') {
         await processBotResponse(supabase, conversation, messageContent)
       }
 
-      // 4. Criar notificação
+      // 4. Criar notificação em tempo real
       await createNotification(supabase, {
         type: 'new_message',
         title: 'Nova Mensagem Recebida',
         message: `${clientName}: ${messageContent.text.substring(0, 50)}...`,
-        priority: conversation.lead_temperature === 'hot' ? 'high' : 'normal',
-        conversation_id: conversation.id,
+        priority: conversation.lead_temperature === 'hot' ? 'critical' : 'normal',
         context: {
-          client_phone: clientPhone,
+          conversation_id: conversation.id,
           client_name: clientName,
+          client_phone: clientPhone,
           message_preview: messageContent.text.substring(0, 100)
         }
       })
-
-    } catch (error) {
-      console.error('Erro ao processar mensagem:', error)
     }
+
+  } catch (error) {
+    console.error('❌ Error processing message:', error)
+    throw error
   }
 }
 
-function extractMessageContent(message: WhatsAppMessage) {
+// Extrair conteúdo da mensagem
+function extractMessageContent(message: any) {
   switch (message.type) {
     case 'text':
       return {
@@ -148,28 +162,32 @@ function extractMessageContent(message: WhatsAppMessage) {
       return {
         text: message.image?.caption || '',
         type: 'image',
-        fileUrl: message.image?.id
+        fileUrl: message.image?.id,
+        fileName: `image_${message.id}.jpg`
       }
     
     case 'document':
       return {
         text: message.document?.caption || '',
         type: 'document',
-        fileUrl: message.document?.id
+        fileUrl: message.document?.id,
+        fileName: message.document?.filename || `document_${message.id}`
       }
     
     case 'audio':
       return {
         text: '',
         type: 'audio',
-        fileUrl: message.audio?.id
+        fileUrl: message.audio?.id,
+        fileName: `audio_${message.id}.ogg`
       }
     
     case 'video':
       return {
         text: message.video?.caption || '',
         type: 'video',
-        fileUrl: message.video?.id
+        fileUrl: message.video?.id,
+        fileName: `video_${message.id}.mp4`
       }
     
     default:
@@ -181,86 +199,71 @@ function extractMessageContent(message: WhatsAppMessage) {
   }
 }
 
+// Buscar ou criar conversa
 async function findOrCreateConversation(supabase: any, clientPhone: string, clientName: string) {
-  // Buscar conversa existente ativa
-  let { data: conversation, error } = await supabase
-    .from('conversations')
-    .select('*')
-    .eq('client_phone', clientPhone)
-    .neq('status', 'closed')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  try {
+    // Buscar conversa existente
+    const { data: existingConversation } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('client_phone', clientPhone)
+      .neq('status', 'closed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
 
-  if (conversation && !error) {
-    return conversation
-  }
-
-  // Buscar ou criar cliente
-  await findOrCreateClient(supabase, clientPhone, clientName)
-
-  // Criar nova conversa
-  const { data: newConversation, error: createError } = await supabase
-    .from('conversations')
-    .insert({
-      client_phone: clientPhone,
-      client_name: clientName,
-      status: 'bot',
-      lead_temperature: 'cold',
-      source: 'whatsapp'
-    })
-    .select()
-    .single()
-
-  if (createError) throw createError
-
-  return newConversation
-}
-
-async function findOrCreateClient(supabase: any, phone: string, name: string) {
-  let { data: client, error } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('phone', phone)
-    .single()
-
-  if (client && !error) {
-    // Atualizar nome se necessário
-    if (client.name !== name && name !== 'Cliente') {
-      await supabase
-        .from('clients')
-        .update({ name: name, updated_at: new Date().toISOString() })
-        .eq('id', client.id)
+    if (existingConversation) {
+      console.log('📋 Found existing conversation')
+      return existingConversation
     }
-    return client
+
+    // Criar nova conversa
+    const { data: newConversation, error } = await supabase
+      .from('conversations')
+      .insert({
+        client_phone: clientPhone,
+        client_name: clientName,
+        status: 'bot',
+        lead_temperature: 'cold', // IA vai classificar depois
+        source: 'whatsapp',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    console.log('✨ Created new conversation')
+    return newConversation
+
+  } catch (error) {
+    console.error('❌ Error in conversation management:', error)
+    throw error
   }
-
-  // Criar novo cliente
-  const { data: newClient, error: createError } = await supabase
-    .from('clients')
-    .insert({
-      phone: phone,
-      name: name,
-      source: 'whatsapp'
-    })
-    .select()
-    .single()
-
-  if (createError) throw createError
-  return newClient
 }
 
+// Salvar mensagem no banco
 async function saveMessageToDatabase(supabase: any, messageData: any) {
-  const { data, error } = await supabase
-    .from('messages')
-    .insert(messageData)
+  try {
+    const { error } = await supabase
+      .from('messages')
+      .insert(messageData)
 
-  if (error) throw error
-  return data
+    if (error) throw error
+    console.log('💾 Message saved to database')
+
+  } catch (error) {
+    console.error('❌ Error saving message:', error)
+    throw error
+  }
 }
 
+// Processar resposta do Bot Dify
 async function processBotResponse(supabase: any, conversation: any, messageContent: any) {
   try {
+    console.log('🤖 Processing with Dify bot')
+
     // Enviar para Dify
     const difyResponse = await sendToDify({
       query: messageContent.text,
@@ -269,20 +272,22 @@ async function processBotResponse(supabase: any, conversation: any, messageConte
     })
 
     if (difyResponse.success && difyResponse.answer) {
-      // Bot conseguiu responder - enviar mensagem
+      console.log('✅ Bot generated response')
+      
+      // Enviar resposta via WhatsApp
       await sendWhatsAppMessage({
         to: conversation.client_phone,
-        text: difyResponse.answer,
-        conversation_id: conversation.id
+        text: difyResponse.answer
       })
 
-      // Salvar resposta do bot
+      // Salvar resposta do bot no banco
       await saveMessageToDatabase(supabase, {
         conversation_id: conversation.id,
         sender_type: 'bot',
         sender_name: 'Assistente IA',
         content: difyResponse.answer,
-        message_type: 'text'
+        message_type: 'text',
+        created_at: new Date().toISOString()
       })
 
       // Atualizar conversa
@@ -295,25 +300,23 @@ async function processBotResponse(supabase: any, conversation: any, messageConte
         .eq('id', conversation.id)
 
     } else {
-      // Bot falhou - escalar para humano
-      await escalateToHuman(supabase, conversation, 'Bot não conseguiu processar a mensagem')
+      console.log('⚠️ Bot failed, escalating to human')
+      await escalateToHuman(supabase, conversation)
     }
 
   } catch (error) {
-    console.error('Erro no processamento do bot:', error)
-    await escalateToHuman(supabase, conversation, 'Erro técnico no bot')
+    console.error('❌ Error in bot processing:', error)
+    await escalateToHuman(supabase, conversation)
   }
 }
 
+// Enviar mensagem para Dify
 async function sendToDify({ query, user, conversation_id }: any) {
   try {
-    const baseUrl = Deno.env.get('DIFY_BASE_URL')
-    const apiKey = Deno.env.get('DIFY_API_KEY')
-
-    const response = await fetch(`${baseUrl}/chat-messages`, {
+    const response = await fetch(`${Deno.env.get('DIFY_BASE_URL')}/chat-messages`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${Deno.env.get('DIFY_API_KEY')}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -334,57 +337,50 @@ async function sendToDify({ query, user, conversation_id }: any) {
     }
 
   } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    }
-  }
-}
-
-async function sendWhatsAppMessage({ to, text, conversation_id }: any) {
-  try {
-    const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')
-    const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN')
-    const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`
-
-    const messageData = {
-      messaging_product: 'whatsapp',
-      to: to,
-      type: 'text',
-      text: {
-        body: text
-      }
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(messageData)
-    })
-
-    const result = await response.json()
-
-    if (response.ok) {
-      return { success: true, message_id: result.messages[0].id }
-    } else {
-      throw new Error(result.error?.message || 'Erro ao enviar mensagem')
-    }
-
-  } catch (error) {
-    console.error('Erro ao enviar mensagem WhatsApp:', error)
+    console.error('❌ Dify API error:', error)
     return { success: false, error: error.message }
   }
 }
 
-async function escalateToHuman(supabase: any, conversation: any, reason: string) {
+// Enviar mensagem via WhatsApp
+async function sendWhatsAppMessage({ to, text }: any) {
+  try {
+    const response = await fetch(`https://graph.facebook.com/v18.0/${Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('WHATSAPP_ACCESS_TOKEN')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'text',
+        text: { body: text }
+      })
+    })
+
+    const result = await response.json()
+    
+    if (response.ok) {
+      console.log('📤 WhatsApp message sent successfully')
+      return result
+    } else {
+      throw new Error(result.error?.message || 'Failed to send message')
+    }
+
+  } catch (error) {
+    console.error('❌ WhatsApp send error:', error)
+    throw error
+  }
+}
+
+// Escalar para humano
+async function escalateToHuman(supabase: any, conversation: any) {
   try {
     // Atualizar status da conversa
     await supabase
-      .from('conversations')
-      .update({
+      .from('conversations')  
+      .update({ 
         status: 'waiting',
         updated_at: new Date().toISOString()
       })
@@ -396,28 +392,35 @@ async function escalateToHuman(supabase: any, conversation: any, reason: string)
       title: 'Bot Falhou - Intervenção Necessária',
       message: `Cliente ${conversation.client_name} precisa de atendimento humano`,
       priority: 'critical',
-      conversation_id: conversation.id,
       context: {
+        conversation_id: conversation.id,
         client_phone: conversation.client_phone,
         client_name: conversation.client_name,
-        reason: reason,
-        escalated_at: new Date().toISOString()
+        reason: 'Bot não conseguiu processar mensagem'
       }
     })
 
+    console.log('🚨 Escalated to human')
+
   } catch (error) {
-    console.error('Erro na escalação:', error)
+    console.error('❌ Error in escalation:', error)
   }
 }
 
+// Criar notificação
 async function createNotification(supabase: any, notificationData: any) {
-  const { data, error } = await supabase
-    .from('notifications')
-    .insert(notificationData)
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .insert({
+        ...notificationData,
+        created_at: new Date().toISOString()
+      })
 
-  if (error) {
-    console.error('Erro ao criar notificação:', error)
+    if (error) throw error
+    console.log('🔔 Notification created')
+
+  } catch (error) {
+    console.error('❌ Error creating notification:', error)
   }
-
-  return data
 }
