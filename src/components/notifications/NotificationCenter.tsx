@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Bell, Settings, Pin, X, Clock, MessageCircle, Lightbulb, Trophy, UserPlus, UserX, Filter } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -125,7 +124,7 @@ export const NotificationCenter: React.FC = () => {
                   <Bell className="w-5 h-5 text-gray-600" />
                   <h3 className="font-semibold text-gray-900">Notificações</h3>
                   {unreadCount > 0 && (
-                    <NotificationBadge count={unreadCount} type="default" className="position-static" />
+                    <NotificationBadge count={unreadCount} type="default" />
                   )}
                 </div>
                 <div className="flex space-x-2">
