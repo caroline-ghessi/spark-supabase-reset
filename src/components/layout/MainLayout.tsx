@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { ConversationsDashboard } from '../conversations/ConversationsDashboard';
-import { SellersPanel } from '../monitoring/MonitoringPanel';
-import { MetricsPage } from '../metrics/MetricsPanel';
-import { NotificationsCenter } from '../notifications/NotificationCenter';
-import { SettingsPage } from '../settings/SettingsPanel';
+import { MonitoringPanel } from '../monitoring/MonitoringPanel';
+import { MetricsPanel } from '../metrics/MetricsPanel';
+import { NotificationCenter } from '../notifications/NotificationCenter';
+import { SettingsPanel } from '../settings/SettingsPanel';
 import { RealConversation } from '@/types/whatsapp';
 
 export const MainLayout: React.FC = () => {
@@ -22,13 +22,13 @@ export const MainLayout: React.FC = () => {
           />
         );
       case 'sellers':
-        return <SellersPanel />;
+        return <MonitoringPanel />;
       case 'metrics':
-        return <MetricsPage />;
+        return <MetricsPanel />;
       case 'notifications':
-        return <NotificationsCenter />;
+        return <NotificationCenter />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsPanel />;
       default:
         return (
           <ConversationsDashboard 

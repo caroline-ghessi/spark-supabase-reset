@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
-import { Search, Filter, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { Search, RefreshCw } from 'lucide-react';
 import { ConversationCard } from './ConversationCard';
+import { EmptyState } from '../ui/EmptyState';
 import { RealConversation } from '@/types/whatsapp';
 
 interface ConversationsListProps {
@@ -17,31 +18,16 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
   onSelectConversation,
   loading
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [leadTypeFilter, setLeadTypeFilter] = useState('all');
-
-  const filteredConversations = conversations.filter(conv => {
-    const matchesSearch = 
-      conv.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.client_phone?.includes(searchTerm);
-    
-    const matchesStatus = statusFilter === 'all' || conv.status === statusFilter;
-    const matchesLeadType = leadTypeFilter === 'all' || conv.lead_temperature === leadTypeFilter;
-    
-    return matchesSearch && matchesStatus && matchesLeadType;
-  });
-
-  // Count conversations by status
-  const statusCounts = conversations.reduce((acc, conv) => {
-    acc[conv.status] = (acc[conv.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const leadTypeCounts = conversations.reduce((acc, conv) => {
-    acc[conv.lead_temperature] = (acc[conv.lead_temperature] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
+          <p className="text-gray-500">Carregando conversas...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -54,59 +40,26 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
           </span>
         </div>
         
-        {/* Filtros */}
-        <div className="flex space-x-2 mb-4">
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-1 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-          >
-            <option value="all">Todos Status ({conversations.length})</option>
-            <option value="bot">Bot Ativo ({statusCounts.bot || 0})</option>
-            <option value="manual">Manual ({statusCounts.manual || 0})</option>
-            <option value="seller">Vendedor ({statusCounts.seller || 0})</option>
-            <option value="waiting">Aguardando ({statusCounts.waiting || 0})</option>
-          </select>
-          
-          <select 
-            value={leadTypeFilter}
-            onChange={(e) => setLeadTypeFilter(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-1 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-          >
-            <option value="all">Todos Leads</option>
-            <option value="hot">🔥 Quente ({leadTypeCounts.hot || 0})</option>
-            <option value="warm">🟡 Morno ({leadTypeCounts.warm || 0})</option>
-            <option value="cold">🔵 Frio ({leadTypeCounts.cold || 0})</option>
-          </select>
-        </div>
-        
-        {/* Busca */}
+        {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Buscar por nome ou telefone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
           />
         </div>
       </div>
       
-      {/* Lista */}
+      {/* Conversations List */}
       <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="p-4 text-center">
-            <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-gray-400" />
-            <p className="text-sm text-gray-500">Carregando conversas...</p>
-          </div>
-        ) : filteredConversations.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <p className="font-medium">Nenhuma conversa encontrada</p>
-            <p className="text-sm">Tente ajustar os filtros ou buscar por outros termos</p>
-          </div>
+        {conversations.length === 0 ? (
+          <EmptyState 
+            message="Nenhuma conversa ativa"
+            subtitle="As conversas aparecerão aqui quando os clientes enviarem mensagens"
+          />
         ) : (
-          filteredConversations.map((conversation) => (
+          conversations.map((conversation) => (
             <ConversationCard
               key={conversation.id}
               conversation={conversation}
