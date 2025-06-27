@@ -116,7 +116,8 @@ export const useWhatsAppIntegration = () => {
         // Fallback to empty array
         setConversations([]);
       } else {
-        setConversations(data || []);
+        // Cast the data to RealConversation[] to handle the type mismatch
+        setConversations((data || []) as RealConversation[]);
       }
     } catch (error) {
       console.error('Error loading conversations:', error);
@@ -142,7 +143,7 @@ export const useWhatsAppIntegration = () => {
       } else {
         setMessages(prev => ({
           ...prev,
-          [conversationId]: data || []
+          [conversationId]: (data || []) as RealMessage[]
         }));
       }
     } catch (error) {
