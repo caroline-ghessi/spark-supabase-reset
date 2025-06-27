@@ -1,10 +1,10 @@
-
 import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { ConversationList } from '../conversations/ConversationList';
 import { ChatPanel } from '../chat/ChatPanel';
 import { MonitoringPanel } from '../monitoring/MonitoringPanel';
 import { MetricsPanel } from '../metrics/MetricsPanel';
+import { SettingsPanel } from '../settings/SettingsPanel';
 import { Conversation } from '../../types/conversation';
 import { mockConversations, mockMessages } from '../../data/mockData';
 
@@ -36,12 +36,7 @@ export const AppLayout = () => {
       case 'metrics':
         return <MetricsPanel />;
       case 'settings':
-        return (
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-            <p className="text-gray-600 mt-2">Configurações do sistema em desenvolvimento...</p>
-          </div>
-        );
+        return <SettingsPanel />;
       default:
         return (
           <div className="flex h-full">
