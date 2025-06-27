@@ -118,16 +118,26 @@ async function processIncomingMessage(supabase: any, messageData: any) {
         content: messageContent.text,
         message_type: messageContent.type,
         file_url: messageContent.fileUrl,
+        file_name: messageContent.fileName,
         whatsapp_message_id: message.id,
         created_at: new Date(message.timestamp * 1000).toISOString()
       })
 
-      // 3. Processar com Bot Dify (se conversa estiver em modo bot)
+      // 3. Atualizar último timestamp da conversa
+      await supabase
+        .from('conversations')
+        .update({
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversation.id)
+
+      // 4. Processar com Bot Dify (se conversa estiver em modo bot)
       if (conversation.status === 'bot') {
         await processBotResponse(supabase, conversation, messageContent)
       }
 
-      // 4. Criar notificação em tempo real
+      // 5. Criar notificação em tempo real
       await createNotification(supabase, {
         type: 'new_message',
         title: 'Nova Mensagem Recebida',
@@ -155,7 +165,8 @@ function extractMessageContent(message: any) {
       return {
         text: message.text?.body || '',
         type: 'text',
-        fileUrl: null
+        fileUrl: null,
+        fileName: null
       }
     
     case 'image':
@@ -194,7 +205,8 @@ function extractMessageContent(message: any) {
       return {
         text: 'Mensagem não suportada',
         type: 'text',
-        fileUrl: null
+        fileUrl: null,
+        fileName: null
       }
   }
 }
@@ -203,14 +215,18 @@ function extractMessageContent(message: any) {
 async function findOrCreateConversation(supabase: any, clientPhone: string, clientName: string) {
   try {
     // Buscar conversa existente
-    const { data: existingConversation } = await supabase
+    const { data: existingConversation, error: findError } = await supabase
       .from('conversations')
       .select('*')
       .eq('client_phone', clientPhone)
       .neq('status', 'closed')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
+
+    if (findError) {
+      console.error('❌ Error finding conversation:', findError)
+    }
 
     if (existingConversation) {
       console.log('📋 Found existing conversation')
@@ -224,15 +240,20 @@ async function findOrCreateConversation(supabase: any, clientPhone: string, clie
         client_phone: clientPhone,
         client_name: clientName,
         status: 'bot',
-        lead_temperature: 'cold', // IA vai classificar depois
+        lead_temperature: 'cold',
         source: 'whatsapp',
+        priority: 'normal',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        metadata: {}
       })
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Error creating conversation:', error)
+      throw error
+    }
 
     console.log('✨ Created new conversation')
     return newConversation
@@ -248,9 +269,16 @@ async function saveMessageToDatabase(supabase: any, messageData: any) {
   try {
     const { error } = await supabase
       .from('messages')
-      .insert(messageData)
+      .insert({
+        ...messageData,
+        status: 'sent',
+        metadata: {}
+      })
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Error saving message:', error)
+      throw error
+    }
     console.log('💾 Message saved to database')
 
   } catch (error) {
@@ -290,7 +318,7 @@ async function processBotResponse(supabase: any, conversation: any, messageConte
         created_at: new Date().toISOString()
       })
 
-      // Atualizar conversa
+      // Atualizar conversa com ID do Dify
       await supabase
         .from('conversations')
         .update({
@@ -414,10 +442,14 @@ async function createNotification(supabase: any, notificationData: any) {
       .from('notifications')
       .insert({
         ...notificationData,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        metadata: {}
       })
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Error creating notification:', error)
+      throw error
+    }
     console.log('🔔 Notification created')
 
   } catch (error) {
