@@ -7,6 +7,8 @@ import { MonitoringPanel } from '../monitoring/MonitoringPanel';
 import { MetricsPanel } from '../metrics/MetricsPanel';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { UsersAndLibraryPanel } from '../users/UsersAndLibraryPanel';
+import { NotificationCenter } from '../notifications/NotificationCenter';
+import { ToastContainer } from '../notifications/ToastContainer';
 import { Conversation } from '../../types/conversation';
 import { mockConversations, mockMessages } from '../../data/mockData';
 
@@ -74,8 +76,28 @@ export const AppLayout = () => {
       
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
+        {/* Top Bar with Notification Center */}
+        <div className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">
+              {activeMenu === 'conversations' && 'Conversas Ativas'}
+              {activeMenu === 'salespeople' && 'Painel de Vendedores'}
+              {activeMenu === 'metrics' && 'Métricas e Relatórios'}
+              {activeMenu === 'settings' && 'Configurações'}
+              {activeMenu === 'users' && 'Usuários e Biblioteca'}
+            </h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <NotificationCenter />
+          </div>
+        </div>
+        
+        {/* Main Content */}
         {renderMainContent()}
       </div>
+      
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   );
 };

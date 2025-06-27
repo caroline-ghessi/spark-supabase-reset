@@ -1,6 +1,8 @@
 
 import { MessageCircle, Users, BarChart3, Settings, Bot } from 'lucide-react';
 import { useState } from 'react';
+import { NotificationBadge } from '../notifications/NotificationBadge';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 const menuItems = [
   { icon: MessageCircle, label: 'Conversas Ativas', id: 'conversations', active: true },
@@ -15,6 +17,44 @@ interface SidebarProps {
 
 export const Sidebar = ({ onMenuChange }: SidebarProps) => {
   const [activeItem, setActiveItem] = useState('conversations');
+  const { notifications } = useNotifications();
+
+  // Calculate badges for each menu item
+  const getBadgeCount = (menuId: string) => {
+    switch (menuId) {
+      case 'conversations':
+        return notifications.filter(n => 
+          !n.lida && ['nova_mensagem', 'cliente_aguardando'].includes(n.tipo)
+        ).length;
+      case 'salespeople':
+        return notifications.filter(n => 
+          !n.lida && ['vendedor_inativo', 'recomendacao_ia'].includes(n.tipo)
+        ).length;
+      case 'metrics':
+        return notifications.filter(n => 
+          !n.lida && ['meta_atingida', 'relatorio_disponivel'].includes(n.tipo)
+        ).length;
+      default:
+        return 0;
+    }
+  };
+
+  const getBadgeType = (menuId: string) => {
+    switch (menuId) {
+      case 'conversations':
+        const hasUrgent = notifications.some(n => 
+          !n.lida && n.prioridade === 'critica' && ['nova_mensagem', 'cliente_aguardando'].includes(n.tipo)
+        );
+        return hasUrgent ? 'urgent' : 'default';
+      case 'salespeople':
+        const hasWarning = notifications.some(n => 
+          !n.lida && n.prioridade === 'alta' && ['vendedor_inativo'].includes(n.tipo)
+        );
+        return hasWarning ? 'warning' : 'default';
+      default:
+        return 'default';
+    }
+  };
 
   const handleMenuClick = (itemId: string) => {
     setActiveItem(itemId);
@@ -41,12 +81,14 @@ export const Sidebar = ({ onMenuChange }: SidebarProps) => {
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeItem === item.id;
+          const badgeCount = getBadgeCount(item.id);
+          const badgeType = getBadgeType(item.id);
           
           return (
             <button
               key={item.id}
               onClick={() => handleMenuClick(item.id)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+              className={`relative w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
                 isActive 
                   ? 'bg-orange-50 text-orange-600 border border-orange-200' 
                   : 'text-gray-600 hover:bg-gray-50'
@@ -54,6 +96,13 @@ export const Sidebar = ({ onMenuChange }: SidebarProps) => {
             >
               <Icon className="w-5 h-5" />
               <span className="font-medium">{item.label}</span>
+              {badgeCount > 0 && (
+                <NotificationBadge 
+                  count={badgeCount} 
+                  type={badgeType}
+                  className="ml-auto"
+                />
+              )}
             </button>
           );
         })}
