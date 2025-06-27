@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { WhatsAppConversationsList } from './WhatsAppConversationsList';
 import { WhatsAppChatInterface } from './WhatsAppChatInterface';
-import { useWhatsAppIntegration, RealConversation } from '@/hooks/useWhatsAppIntegration';
+import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
+import { RealConversation } from '@/types/whatsapp';
 import { MessageSquare, Bot, User, Clock, AlertTriangle } from 'lucide-react';
 
 export const WhatsAppDashboard: React.FC = () => {

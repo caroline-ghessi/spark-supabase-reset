@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Send, Bot, User, Clock, CheckCircle, MessageSquare } from 'lucide-react';
-import { RealConversation, RealMessage } from '@/hooks/useWhatsAppIntegration';
+import { RealConversation, RealMessage } from '@/types/whatsapp';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
