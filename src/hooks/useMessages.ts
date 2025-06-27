@@ -17,23 +17,37 @@ export const useMessages = () => {
 
       if (error) {
         console.error('❌ Erro ao carregar mensagens:', error);
+        console.error('❌ Detalhes do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         toast({
           title: "Erro",
-          description: "Falha ao carregar mensagens",
+          description: `Falha ao carregar mensagens: ${error.message}`,
           variant: "destructive",
         });
-      } else {
-        console.log(`✅ Mensagens carregadas para ${conversationId}:`, data?.length || 0);
-        setMessages(prev => ({
-          ...prev,
-          [conversationId]: (data || []) as RealMessage[]
-        }));
+        return;
       }
+
+      console.log(`✅ Mensagens carregadas para ${conversationId}:`, data?.length || 0);
+      
+      // Garantir que os dados estão no formato correto
+      const formattedMessages = (data || []).map((msg: any) => ({
+        ...msg,
+        file_size: msg.file_size ? Number(msg.file_size) : null
+      })) as RealMessage[];
+
+      setMessages(prev => ({
+        ...prev,
+        [conversationId]: formattedMessages
+      }));
     } catch (error) {
       console.error('❌ Erro na busca de mensagens:', error);
       toast({
         title: "Erro",
-        description: "Falha ao carregar mensagens",
+        description: "Falha ao carregar mensagens - erro de conexão",
         variant: "destructive",
       });
     }
@@ -51,7 +65,8 @@ export const useMessages = () => {
       });
 
       if (response.error) {
-        throw new Error(response.error.message);
+        console.error('❌ Erro na resposta:', response.error);
+        throw new Error(response.error.message || 'Erro desconhecido');
       }
 
       console.log('✅ Mensagem enviada com sucesso');
@@ -66,7 +81,7 @@ export const useMessages = () => {
       console.error('❌ Erro ao enviar mensagem:', error);
       toast({
         title: "Erro",
-        description: "Falha ao enviar mensagem",
+        description: error instanceof Error ? error.message : "Falha ao enviar mensagem",
         variant: "destructive",
       });
       throw error;

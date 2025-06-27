@@ -19,21 +19,35 @@ export const useConversations = () => {
 
       if (error) {
         console.error('❌ Erro ao carregar conversas:', error);
+        console.error('❌ Detalhes do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         toast({
           title: "Erro",
-          description: "Falha ao carregar conversas",
+          description: `Falha ao carregar conversas: ${error.message}`,
           variant: "destructive",
         });
         setConversations([]);
-      } else {
-        console.log('✅ Conversas carregadas:', data?.length || 0);
-        setConversations((data || []) as RealConversation[]);
+        return;
       }
+
+      console.log('✅ Conversas carregadas:', data?.length || 0);
+      
+      // Garantir que os dados estão no formato correto
+      const formattedConversations = (data || []).map((conv: any) => ({
+        ...conv,
+        potential_value: conv.potential_value ? Number(conv.potential_value) : null
+      })) as RealConversation[];
+
+      setConversations(formattedConversations);
     } catch (error) {
       console.error('❌ Erro na busca de conversas:', error);
       toast({
         title: "Erro",
-        description: "Falha ao carregar conversas",
+        description: "Falha ao carregar conversas - erro de conexão",
         variant: "destructive",
       });
       setConversations([]);
@@ -53,7 +67,8 @@ export const useConversations = () => {
       });
 
       if (response.error) {
-        throw new Error(response.error.message);
+        console.error('❌ Erro na resposta:', response.error);
+        throw new Error(response.error.message || 'Erro desconhecido');
       }
 
       console.log('✅ Controle assumido com sucesso');
@@ -71,7 +86,7 @@ export const useConversations = () => {
       console.error('❌ Erro ao assumir controle:', error);
       toast({
         title: "Erro",
-        description: "Falha ao assumir controle",
+        description: error instanceof Error ? error.message : "Falha ao assumir controle",
         variant: "destructive",
       });
       throw error;
