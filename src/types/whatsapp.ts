@@ -27,9 +27,9 @@ export interface RealMessage {
   message_type: 'text' | 'image' | 'document' | 'audio' | 'video';
   file_url?: string;
   file_name?: string;
-  file_size?: number; // Corrigido para number em vez de bigint
+  file_size?: number;
   whatsapp_message_id?: string;
-  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed' | 'received';
   metadata: any;
   created_at: string;
 }
