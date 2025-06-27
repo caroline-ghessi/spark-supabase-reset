@@ -1,4 +1,7 @@
 
+// Manter para compatibilidade mas marcado como deprecated
+// Os dados reais agora vêm do banco de dados
+
 export interface Seller {
   id: number;
   nome: string;
@@ -10,32 +13,15 @@ export interface Seller {
   avatar?: string;
 }
 
+// DEPRECATED: Use RealSellersPanel em vez deste mock
 export const mockSellers: Seller[] = [
   {
-    id: 1,
-    nome: "Antonio Silva",
-    especialidade: "Automação Industrial",
-    clientesAtuais: 3,
-    maxClientes: 8,
-    performance: 4.8,
-    disponivel: true
-  },
-  {
-    id: 2,
-    nome: "Carla Mendes",
-    especialidade: "Projetos Residenciais",
-    clientesAtuais: 5,
-    maxClientes: 6,
-    performance: 4.9,
-    disponivel: true
-  },
-  {
-    id: 3,
-    nome: "Roberto Santos",
-    especialidade: "Prospecção",
-    clientesAtuais: 8,
-    maxClientes: 10,
-    performance: 4.2,
+    id: 999,
+    nome: "⚠️ DADOS MOCKADOS - USE VENDEDORES REAIS",
+    especialidade: "Dados atualizados no banco",
+    clientesAtuais: 0,
+    maxClientes: 0,
+    performance: 0,
     disponivel: false
   }
 ];
