@@ -6,6 +6,7 @@ import { MonitoringPanel } from '../monitoring/MonitoringPanel';
 import { MetricsPanel } from '../metrics/MetricsPanel';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { SettingsPanel } from '../settings/SettingsPanel';
+import { PlatformHealthCheck } from '../testing/PlatformHealthCheck';
 import { RealConversation } from '@/types/whatsapp';
 
 export const MainLayout: React.FC = () => {
@@ -29,6 +30,8 @@ export const MainLayout: React.FC = () => {
         return <NotificationCenter />;
       case 'settings':
         return <SettingsPanel />;
+      case 'health-check':
+        return <PlatformHealthCheck />;
       default:
         return (
           <ConversationsDashboard 
