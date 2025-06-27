@@ -57,6 +57,28 @@ export const mockConversations: Conversation[] = [
     lastMessageTime: "45 min atrás",
     unreadCount: 0,
     assignedSeller: null
+  },
+  {
+    id: 6,
+    clientName: "Luciana Reis",
+    clientPhone: "51 99999-1111",
+    status: "seller",
+    leadType: "hot",
+    lastMessage: "Vou fechar o pedido hoje mesmo!",
+    lastMessageTime: "10 min atrás",
+    unreadCount: 1,
+    assignedSeller: "Carla"
+  },
+  {
+    id: 7,
+    clientName: "Roberto Gomes",
+    clientPhone: "51 99999-2222",
+    status: "manual",
+    leadType: "cold",
+    lastMessage: "Ainda estou analisando as opções",
+    lastMessageTime: "2h atrás",
+    unreadCount: 0,
+    assignedSeller: null
   }
 ];
 
@@ -85,6 +107,14 @@ export const mockMessages: Record<number, Message[]> = {
       content: "É um projeto de automação industrial, preciso para esta semana",
       timestamp: "14:32",
       type: "text"
+    },
+    {
+      id: 4,
+      sender: "bot",
+      senderName: "Bot",
+      content: "Entendi! Projeto de automação industrial é nossa especialidade. Vou conectar você com um especialista para um atendimento personalizado.",
+      timestamp: "14:33",
+      type: "text"
     }
   ],
   2: [
@@ -103,6 +133,14 @@ export const mockMessages: Record<number, Message[]> = {
       content: "Olá Maria! Claro, posso te ajudar. Que tipo de serviço você está procurando?",
       timestamp: "13:46",
       type: "text"
+    },
+    {
+      id: 6,
+      sender: "client",
+      senderName: "Maria Santos",
+      content: "Estou interessada em automação residencial, principalmente para segurança",
+      timestamp: "13:47",
+      type: "text"
     }
   ],
   3: [
@@ -120,6 +158,50 @@ export const mockMessages: Record<number, Message[]> = {
       senderName: "Antonio",
       content: "Sem problemas Pedro! Quando você estiver pronto para decidir, estarei aqui para te ajudar.",
       timestamp: "12:35",
+      type: "text"
+    },
+    {
+      id: 8,
+      sender: "seller",
+      senderName: "Antonio",
+      content: "Posso te enviar alguns cases de projetos similares que fizemos? Isso pode te ajudar na pesquisa.",
+      timestamp: "12:36",
+      type: "text"
+    }
+  ],
+  4: [
+    {
+      id: 9,
+      sender: "client",
+      senderName: "Ana Oliveira",
+      content: "Quando vocês podem fazer a instalação?",
+      timestamp: "14:00",
+      type: "text"
+    },
+    {
+      id: 10,
+      sender: "client",
+      senderName: "Ana Oliveira",
+      content: "Preciso muito que seja ainda esta semana",
+      timestamp: "14:15",
+      type: "text"
+    }
+  ],
+  6: [
+    {
+      id: 11,
+      sender: "client",
+      senderName: "Luciana Reis",
+      content: "Vou fechar o pedido hoje mesmo!",
+      timestamp: "14:50",
+      type: "text"
+    },
+    {
+      id: 12,
+      sender: "seller",
+      senderName: "Carla",
+      content: "Que ótima notícia, Luciana! Vou preparar o contrato agora mesmo. Em quanto tempo você precisa da instalação?",
+      timestamp: "14:51",
       type: "text"
     }
   ]
