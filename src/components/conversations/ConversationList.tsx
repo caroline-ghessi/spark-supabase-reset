@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, MessageCircle } from 'lucide-react';
 import { Conversation } from '../../types/conversation';
 import { ConversationCard } from './ConversationCard';
 

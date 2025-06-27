@@ -16,7 +16,7 @@ export const AppLayout = () => {
     setIsChatPanelOpen(true);
   };
 
-  const handleStatusChange = (conversationId: number, newStatus: string) => {
+  const handleStatusChange = (conversationId: number, newStatus: Conversation['status']) => {
     setConversations(prev => 
       prev.map(conv => 
         conv.id === conversationId 
