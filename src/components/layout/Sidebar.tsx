@@ -9,8 +9,17 @@ const menuItems = [
   { icon: Settings, label: 'Configurações', id: 'settings' },
 ];
 
-export const Sidebar = () => {
+interface SidebarProps {
+  onMenuChange?: (menuId: string) => void;
+}
+
+export const Sidebar = ({ onMenuChange }: SidebarProps) => {
   const [activeItem, setActiveItem] = useState('conversations');
+
+  const handleMenuClick = (itemId: string) => {
+    setActiveItem(itemId);
+    onMenuChange?.(itemId);
+  };
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -36,7 +45,7 @@ export const Sidebar = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveItem(item.id)}
+              onClick={() => handleMenuClick(item.id)}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
                 isActive 
                   ? 'bg-orange-50 text-orange-600 border border-orange-200' 
@@ -61,6 +70,7 @@ export const Sidebar = () => {
             <div>Bot: Online</div>
             <div>API: Conectada</div>
             <div>Conversas: 12 ativas</div>
+            <div>IA: Monitorando</div>
           </div>
         </div>
       </div>
