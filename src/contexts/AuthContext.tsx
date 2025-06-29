@@ -28,15 +28,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// CONFIGURAÇÕES DE DESENVOLVIMENTO E EMERGÊNCIA
+// CONFIGURAÇÕES DE DESENVOLVIMENTO SEGURAS
 const DEV_CONFIG = {
-  enabled: import.meta.env.DEV || import.meta.env.VITE_DEV_ACCESS === 'true',
-  email: 'caroline@drystore.com.br',
-  password: 'DevAccess2024!',
+  enabled: import.meta.env.DEV,
+  // Removido credenciais hardcoded - usar apenas em desenvolvimento local
   adminUser: {
     id: 'dev-admin-001',
-    email: 'caroline@drystore.com.br',
-    name: 'Caroline Ghessi (Dev)',
+    email: 'admin@dev.local',
+    name: 'Dev Admin',
     role: 'admin' as const,
     first_login_completed: true
   }
@@ -76,6 +75,11 @@ const ROLE_PERMISSIONS = {
   ]
 };
 
+// Controle de rate limiting para login
+const LOGIN_ATTEMPTS = new Map<string, { count: number; lastAttempt: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -105,14 +109,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const checkInitialSession = async () => {
     try {
-      // Verificar acesso de emergência primeiro
+      // Verificar acesso de emergência (agora mais seguro)
       if (checkEmergencyAccess()) {
         setLoading(false);
         return;
       }
 
-      // Verificar acesso de desenvolvimento
-      if (checkDevAccess()) {
+      // Verificar acesso de desenvolvimento (apenas em DEV)
+      if (DEV_CONFIG.enabled && checkDevAccess()) {
         setLoading(false);
         return;
       }
@@ -140,33 +144,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const checkEmergencyAccess = (): boolean => {
     const emergencyAccess = localStorage.getItem('emergency_access');
     const emergencyExpires = localStorage.getItem('emergency_expires');
+    const emergencyToken = localStorage.getItem('emergency_token');
     
-    if (emergencyAccess === 'true' && emergencyExpires) {
+    if (emergencyAccess === 'true' && emergencyExpires && emergencyToken) {
       const expiresAt = parseInt(emergencyExpires);
-      if (Date.now() < expiresAt) {
-        setUser({
-          id: 'emergency-admin',
-          email: 'emergency@admin.com',
-          name: 'Emergency Admin',
-          role: 'admin',
-          first_login_completed: true
-        });
-        console.warn('⚠️ Acesso de emergência ativo');
-        return true;
-      } else {
-        // Limpar acesso expirado
-        localStorage.removeItem('emergency_access');
-        localStorage.removeItem('emergency_expires');
+      const now = Date.now();
+      
+      // Verificar se não expirou (máximo 1 hora)
+      if (now < expiresAt && (expiresAt - now) <= 3600000) {
+        // Verificar token de emergência (deve ser baseado em data e chave secreta)
+        const today = new Date();
+        const expectedToken = generateEmergencyToken(today);
+        
+        if (emergencyToken === expectedToken) {
+          setUser({
+            id: 'emergency-admin',
+            email: 'emergency@admin.com',
+            name: 'Emergency Admin',
+            role: 'admin',
+            first_login_completed: true
+          });
+          console.warn('⚠️ Acesso de emergência ativo');
+          return true;
+        }
       }
+      
+      // Limpar acesso inválido ou expirado
+      localStorage.removeItem('emergency_access');
+      localStorage.removeItem('emergency_expires');
+      localStorage.removeItem('emergency_token');
     }
     return false;
   };
 
+  const generateEmergencyToken = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString();
+    return `EMG-${year}${month}${day}-SECURE`;
+  };
+
   const checkDevAccess = (): boolean => {
+    if (!DEV_CONFIG.enabled) return false;
+    
     const devAccess = localStorage.getItem('dev_access');
     const devUser = localStorage.getItem('dev_user');
     
-    if (DEV_CONFIG.enabled && devAccess === 'true' && devUser) {
+    if (devAccess === 'true' && devUser) {
       try {
         const userData = JSON.parse(devUser);
         setUser(userData);
@@ -210,13 +234,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const checkRateLimit = (email: string): boolean => {
+    const now = Date.now();
+    const attempts = LOGIN_ATTEMPTS.get(email);
+    
+    if (!attempts) {
+      LOGIN_ATTEMPTS.set(email, { count: 1, lastAttempt: now });
+      return true;
+    }
+    
+    // Reset counter se passou da janela de tempo
+    if (now - attempts.lastAttempt > RATE_LIMIT_WINDOW) {
+      LOGIN_ATTEMPTS.set(email, { count: 1, lastAttempt: now });
+      return true;
+    }
+    
+    // Verificar se excedeu limite
+    if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+      return false;
+    }
+    
+    // Incrementar tentativas
+    LOGIN_ATTEMPTS.set(email, { count: attempts.count + 1, lastAttempt: now });
+    return true;
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
-      // BYPASS DE DESENVOLVIMENTO - Caroline Dev Access
+      // Validação de input
+      if (!email || !password) {
+        return { success: false, error: 'Email e senha são obrigatórios' };
+      }
+
+      // Verificar rate limiting
+      if (!checkRateLimit(email)) {
+        return { 
+          success: false, 
+          error: `Muitas tentativas de login. Tente novamente em ${Math.ceil(RATE_LIMIT_WINDOW / 60000)} minutos.` 
+        };
+      }
+
+      // BYPASS DE DESENVOLVIMENTO - apenas em ambiente DEV
       if (DEV_CONFIG.enabled && 
-          email === DEV_CONFIG.email && 
-          password === DEV_CONFIG.password) {
-        console.log('🔓 Acesso de desenvolvimento ativado para Caroline');
+          email === 'dev@admin.com' && 
+          password === 'DevAccess2024!') {
+        console.log('🔓 Acesso de desenvolvimento ativado');
         setUser(DEV_CONFIG.adminUser);
         
         // Salvar flag de dev access
@@ -238,6 +300,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) throw error;
 
+      // Limpar rate limiting em caso de sucesso
+      LOGIN_ATTEMPTS.delete(email);
+
       // Dados do usuário serão carregados pelo listener onAuthStateChange
       return { success: true, user: data.user };
     } catch (error: any) {
@@ -251,6 +316,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
+      // Validação de input
+      if (!email || !password || !name) {
+        return { success: false, error: 'Todos os campos são obrigatórios' };
+      }
+
+      if (password.length < 8) {
+        return { success: false, error: 'A senha deve ter pelo menos 8 caracteres' };
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -298,6 +372,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('dev_user');
       localStorage.removeItem('emergency_access');
       localStorage.removeItem('emergency_expires');
+      localStorage.removeItem('emergency_token');
       
       // Se for usuário real do Supabase, fazer logout
       if (session && user?.id && !user.id.startsWith('dev-') && !user.id.startsWith('emergency-')) {

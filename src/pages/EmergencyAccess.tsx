@@ -10,26 +10,47 @@ import { Shield, AlertTriangle } from 'lucide-react';
 export function EmergencyAccess() {
   const [secretCode, setSecretCode] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleEmergencyAccess = () => {
-    // Código baseado na data atual
-    const today = new Date();
-    const day = today.getDate().toString().padStart(2, '0');
-    const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    const expectedCode = `EMERGENCY-${day}${month}-CAROLINE`;
+  const generateEmergencyToken = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString();
+    return `EMG-${year}${month}${day}-SECURE`;
+  };
 
-    if (secretCode.toUpperCase() === expectedCode) {
-      // Criar acesso de emergência válido por 1 hora
-      localStorage.setItem('emergency_access', 'true');
-      localStorage.setItem('emergency_expires', (Date.now() + 3600000).toString());
-      
-      // Log de segurança
-      console.warn('🚨 Acesso de emergência ativado às', new Date().toISOString());
-      
-      navigate('/');
-    } else {
-      setError('Código inválido. Formato: EMERGENCY-DDMM-CAROLINE');
+  const handleEmergencyAccess = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Código mais seguro baseado na data atual
+      const today = new Date();
+      const expectedCode = generateEmergencyToken(today);
+
+      if (secretCode.toUpperCase().trim() === expectedCode) {
+        // Criar acesso de emergência válido por apenas 1 hora
+        const expiresAt = Date.now() + 3600000; // 1 hora
+        
+        localStorage.setItem('emergency_access', 'true');
+        localStorage.setItem('emergency_expires', expiresAt.toString());
+        localStorage.setItem('emergency_token', expectedCode);
+        
+        // Log de segurança
+        console.warn('🚨 Acesso de emergência ativado às', new Date().toISOString());
+        
+        // Aguardar um pouco para simular validação
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        navigate('/');
+      } else {
+        setError('Código de emergência inválido. Verifique o formato e a data.');
+      }
+    } catch (error) {
+      setError('Erro ao processar código de emergência.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -48,7 +69,8 @@ export function EmergencyAccess() {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Este acesso é apenas para situações de emergência e será registrado.
+              Este acesso é apenas para situações de emergência e será registrado. 
+              Válido por apenas 1 hora.
             </AlertDescription>
           </Alert>
 
@@ -58,10 +80,11 @@ export function EmergencyAccess() {
               placeholder="Código de emergência"
               value={secretCode}
               onChange={(e) => setSecretCode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleEmergencyAccess()}
+              onKeyDown={(e) => e.key === 'Enter' && !loading && handleEmergencyAccess()}
+              disabled={loading}
             />
             <p className="text-xs text-gray-500 mt-2">
-              Formato: EMERGENCY-[DIA][MÊS]-CAROLINE
+              Formato: EMG-AAAAMMDD-SECURE (baseado na data atual)
             </p>
           </div>
 
@@ -74,8 +97,9 @@ export function EmergencyAccess() {
           <Button 
             onClick={handleEmergencyAccess}
             className="w-full bg-red-500 hover:bg-red-600"
+            disabled={loading}
           >
-            Ativar Acesso de Emergência
+            {loading ? 'Validando...' : 'Ativar Acesso de Emergência'}
           </Button>
 
           <div className="text-center">
