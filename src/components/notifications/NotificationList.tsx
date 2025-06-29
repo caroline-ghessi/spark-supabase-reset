@@ -7,8 +7,8 @@ interface NotificationListProps {
   pinnedNotifications: any[];
   regularNotifications: any[];
   onNotificationClick: (notification: any) => void;
-  onTogglePin: (id: number) => void;
-  onRemoveNotification: (id: number) => void;
+  onTogglePin: (id: string) => void;
+  onRemoveNotification: (id: string) => void;
 }
 
 export const NotificationList: React.FC<NotificationListProps> = ({
