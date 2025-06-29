@@ -1,11 +1,11 @@
 
 import type { LoginAttempt } from './types';
 
-// Controle de rate limiting
+// Controle de rate limiting mais inteligente
 const LOGIN_ATTEMPTS = new Map<string, LoginAttempt>();
 const MAX_LOGIN_ATTEMPTS = 5;
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
-const LOCKOUT_DURATION = 30 * 60 * 1000; // 30 minutos de bloqueio
+const LOCKOUT_DURATION = 15 * 60 * 1000; // Reduzido para 15 minutos
 
 // Utilitário para log de segurança
 export const logSecurityEvent = (event: string, details: any) => {
@@ -13,6 +13,36 @@ export const logSecurityEvent = (event: string, details: any) => {
     timestamp: new Date().toISOString(),
     ...details
   });
+};
+
+// Função para limpar estado local (nova funcionalidade)
+export const clearLocalAuthState = () => {
+  console.log('🧹 Limpando estado local de autenticação...');
+  
+  // Limpar rate limiting
+  LOGIN_ATTEMPTS.clear();
+  
+  // Limpar localStorage
+  const keysToRemove = [
+    'login_attempts_count',
+    'login_attempts',
+    'login_blocked_until',
+    'dev_access',
+    'dev_user',
+    'emergency_access',
+    'emergency_expires',
+    'emergency_token'
+  ];
+  
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key);
+  });
+  
+  // Limpar sessionStorage também
+  sessionStorage.removeItem('reload_count');
+  sessionStorage.removeItem('session_start');
+  
+  console.log('✅ Estado local limpo com sucesso');
 };
 
 export const checkRateLimit = (email: string): { allowed: boolean; message?: string } => {
@@ -33,7 +63,7 @@ export const checkRateLimit = (email: string): { allowed: boolean; message?: str
     };
   }
   
-  // Reset counter se passou da janela de tempo
+  // Reset counter se passou da janela de tempo - CORRIGIDO
   if (now - attempts.lastAttempt > RATE_LIMIT_WINDOW) {
     LOGIN_ATTEMPTS.set(email, { count: 1, lastAttempt: now });
     return { allowed: true };
@@ -48,11 +78,15 @@ export const checkRateLimit = (email: string): { allowed: boolean; message?: str
       lastAttempt: now 
     });
     
-    logSecurityEvent('ACCOUNT_LOCKED', { email, blockedUntil });
+    logSecurityEvent('ACCOUNT_LOCKED', { 
+      email, 
+      blockedUntil,
+      duration: Math.ceil(LOCKOUT_DURATION / 60000) + ' minutos'
+    });
     
     return { 
       allowed: false, 
-      message: `Muitas tentativas de login. Conta bloqueada por 30 minutos.`
+      message: `Muitas tentativas de login. Conta bloqueada por 15 minutos.`
     };
   }
   
@@ -63,6 +97,7 @@ export const checkRateLimit = (email: string): { allowed: boolean; message?: str
 
 export const clearRateLimit = (email: string) => {
   LOGIN_ATTEMPTS.delete(email);
+  console.log(`✅ Rate limit limpo para: ${email}`);
 };
 
 export const validateEmergencyToken = (token: string): boolean => {
@@ -89,4 +124,15 @@ export const validateEmergencyToken = (token: string): boolean => {
   } catch (error) {
     return false;
   }
+};
+
+// Nova função para debug de rate limiting
+export const debugRateLimit = (email: string) => {
+  const attempts = LOGIN_ATTEMPTS.get(email);
+  console.log(`🔍 Debug Rate Limit para ${email}:`, {
+    attempts: attempts?.count || 0,
+    lastAttempt: attempts?.lastAttempt ? new Date(attempts.lastAttempt).toISOString() : 'nunca',
+    blockedUntil: attempts?.blockedUntil ? new Date(attempts.blockedUntil).toISOString() : 'não bloqueado',
+    isBlocked: attempts?.blockedUntil ? Date.now() < attempts.blockedUntil : false
+  });
 };

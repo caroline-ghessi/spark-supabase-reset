@@ -22,6 +22,7 @@ export interface AuthContextType {
   isSeller: boolean;
   isSupervisor: boolean;
   hasPermission: (permission: string) => boolean;
+  resetAuthState?: () => void; // Nova função para reset
 }
 
 export interface LoginAttempt {

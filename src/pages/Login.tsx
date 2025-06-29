@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -6,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Lock, Mail, AlertCircle, Shield, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Lock, Mail, AlertCircle, Shield, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { sanitizeInput, validateEmail } from '@/utils/sanitize';
+import { clearLocalAuthState, debugRateLimit } from '@/contexts/auth/security';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -20,7 +22,7 @@ export function Login() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockTimeRemaining, setBlockTimeRemaining] = useState(0);
   
-  const { signIn, user, loading: authLoading } = useAuth();
+  const { signIn, user, loading: authLoading, resetAuthState } = useAuth();
   const navigate = useNavigate();
 
   // Redirecionar se já estiver logado
@@ -96,6 +98,9 @@ export function Login() {
       return;
     }
 
+    // Debug rate limit antes da tentativa
+    debugRateLimit(cleanEmail);
+
     console.log('🚀 Calling signIn...');
     const result = await signIn(cleanEmail, cleanPassword);
     console.log('📋 SignIn result:', result);
@@ -105,35 +110,58 @@ export function Login() {
       // Limpar tentativas em caso de sucesso
       localStorage.removeItem('login_attempts_count');
       localStorage.removeItem('login_attempts');
+      localStorage.removeItem('login_blocked_until');
       setLoginAttempts(0);
+      setIsBlocked(false);
       
       // A navegação será feita pelo useEffect que monitora o user
     } else {
       console.log('❌ Login failed:', result.error);
-      // Incrementar tentativas
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-      localStorage.setItem('login_attempts_count', newAttempts.toString());
-      localStorage.setItem('login_attempts', newAttempts.toString());
-      
-      // Bloquear após 5 tentativas
-      if (newAttempts >= 5) {
-        const blockUntil = Date.now() + (30 * 60 * 1000); // 30 minutos
-        localStorage.setItem('login_blocked_until', blockUntil.toString());
-        setIsBlocked(true);
-        setBlockTimeRemaining(30 * 60); // 30 minutos em segundos
-        setError('Muitas tentativas de login. Conta bloqueada por 30 minutos.');
+      // Incrementar tentativas apenas para erros reais de login
+      if (!result.error?.includes('bloqueado')) {
+        const newAttempts = loginAttempts + 1;
+        setLoginAttempts(newAttempts);
+        localStorage.setItem('login_attempts_count', newAttempts.toString());
+        localStorage.setItem('login_attempts', newAttempts.toString());
+        
+        // Bloquear após 5 tentativas
+        if (newAttempts >= 5) {
+          const blockUntil = Date.now() + (15 * 60 * 1000); // 15 minutos
+          localStorage.setItem('login_blocked_until', blockUntil.toString());
+          setIsBlocked(true);
+          setBlockTimeRemaining(15 * 60); // 15 minutos em segundos
+          setError('Muitas tentativas de login. Conta bloqueada por 15 minutos.');
+        } else {
+          setError(result.error || 'Erro ao fazer login');
+        }
+        
+        // Mostrar dica de dev após 3 tentativas em ambiente de desenvolvimento
+        if (newAttempts >= 3 && import.meta.env.DEV) {
+          setShowDevHint(true);
+        }
       } else {
         setError(result.error || 'Erro ao fazer login');
-      }
-      
-      // Mostrar dica de dev após 3 tentativas em ambiente de desenvolvimento
-      if (newAttempts >= 3 && import.meta.env.DEV) {
-        setShowDevHint(true);
       }
     }
 
     setLoading(false);
+  };
+
+  // Nova função para limpar estado e tentar novamente
+  const handleClearAndRetry = () => {
+    console.log('🧹 Limpando estado e tentando novamente...');
+    clearLocalAuthState();
+    setLoginAttempts(0);
+    setIsBlocked(false);
+    setBlockTimeRemaining(0);
+    setError('');
+    
+    // Reset do AuthContext se disponível
+    if (resetAuthState) {
+      resetAuthState();
+    }
+    
+    console.log('✅ Estado limpo, tente fazer login novamente');
   };
 
   const formatTime = (seconds: number) => {
@@ -260,20 +288,36 @@ export function Login() {
                 </Alert>
               )}
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading || isBlocked}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  'Entrar'
+              <div className="space-y-2">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || isBlocked}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Entrando...
+                    </>
+                  ) : (
+                    'Entrar'
+                  )}
+                </Button>
+
+                {/* Botão para limpar estado quando houver problemas */}
+                {(error || loginAttempts > 2) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleClearAndRetry}
+                    disabled={loading}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Limpar Estado e Tentar Novamente
+                  </Button>
                 )}
-              </Button>
+              </div>
             </form>
 
             {/* Links de emergência (apenas em dev) */}

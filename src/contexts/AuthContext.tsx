@@ -7,6 +7,7 @@ import { checkDevAccess } from './auth/devAccess';
 import { loadUserData } from './auth/userOperations';
 import { signIn as authSignIn, signUp as authSignUp, signOut as authSignOut } from './auth/authOperations';
 import { hasPermission as checkPermission } from './auth/permissions';
+import { clearLocalAuthState } from './auth/security';
 import type { AuthContextType, User } from './auth/types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,22 +17,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Estado para controlar se já foi inicializado
+  const [initialized, setInitialized] = useState(false);
+
   useEffect(() => {
-    console.log('🔄 AuthProvider: Inicializando...');
+    console.log('🔄 AuthProvider: Inicializando sistema de autenticação...');
     
+    let isActive = true; // Flag para evitar updates depois que componente desmonta
+
     // Configurar listener de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('🔑 Auth event:', event, session?.user?.email);
+        if (!isActive) return;
+        
+        console.log('🔑 Auth event:', event, session?.user?.email || 'no session');
         
         setSession(session);
         
-        // CORREÇÃO CRÍTICA: Usar setTimeout para evitar recursão
         if (session?.user) {
-          console.log('📊 Carregando dados do usuário (diferido):', session.user.email);
+          console.log('📊 Usuário detectado, carregando dados:', session.user.email);
+          // Usar setTimeout para evitar problemas de sincronização
           setTimeout(() => {
-            loadUserData(session.user.id, setUser, setLoading);
-          }, 0);
+            if (isActive) {
+              loadUserData(session.user.id, setUser, setLoading);
+            }
+          }, 100);
         } else {
           console.log('🚫 Sem sessão, limpando dados do usuário');
           setUser(null);
@@ -40,23 +50,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // Verificar sessão inicial
-    checkInitialSession();
+    // Verificar sessão inicial apenas uma vez
+    if (!initialized) {
+      checkInitialSession();
+      setInitialized(true);
+    }
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
+  }, [initialized]);
 
   const checkInitialSession = async () => {
     try {
       console.log('🔍 Verificando sessão inicial...');
       
-      // Verificar acesso de emergência (agora mais seguro)
+      // Verificar acesso de emergência (mais seguro)
       if (checkEmergencyAccess(setUser)) {
         setLoading(false);
         return;
       }
 
-      // Verificar acesso de desenvolvimento (apenas em DEV e se habilitado)
+      // Verificar acesso de desenvolvimento (apenas em DEV)
       if (checkDevAccess(setUser)) {
         setLoading(false);
         return;
@@ -71,14 +87,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      console.log('📋 Verificação de sessão inicial:', session?.user?.email || 'Sem sessão');
+      console.log('📋 Sessão inicial encontrada:', session?.user?.email || 'Nenhuma sessão');
 
       if (session?.user) {
         setSession(session);
-        // CORREÇÃO: Usar setTimeout para evitar recursão
+        // Usar setTimeout para evitar problemas de sincronização
         setTimeout(() => {
           loadUserData(session.user.id, setUser, setLoading);
-        }, 0);
+        }, 100);
       } else {
         setLoading(false);
       }
@@ -89,6 +105,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signIn = async (email: string, password: string) => {
+    console.log('📝 Iniciando processo de login para:', email);
     return authSignIn(email, password, setUser);
   };
 
@@ -105,6 +122,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return checkPermission(user.role, permission);
   };
 
+  // Nova função para limpar estado e reinicializar
+  const resetAuthState = () => {
+    console.log('🔄 Resetando estado de autenticação...');
+    clearLocalAuthState();
+    setUser(null);
+    setSession(null);
+    setLoading(true);
+    setInitialized(false);
+    
+    // Forçar recheck da sessão
+    setTimeout(() => {
+      checkInitialSession();
+      setInitialized(true);
+    }, 100);
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -115,7 +148,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAdmin: user?.role === 'admin',
     isSeller: user?.role === 'seller',
     isSupervisor: user?.role === 'supervisor',
-    hasPermission
+    hasPermission,
+    resetAuthState // Expor função de reset
   };
 
   return (
@@ -131,4 +165,20 @@ export const useAuth = () => {
     throw new Error('useAuth deve ser usado dentro de AuthProvider');
   }
   return context;
+};
+
+// Função utilitária para debug (exportada)
+export const debugAuthState = () => {
+  console.log('🔍 Debug Estado de Autenticação:', {
+    localStorage: {
+      loginAttempts: localStorage.getItem('login_attempts_count'),
+      blockedUntil: localStorage.getItem('login_blocked_until'),
+      devAccess: localStorage.getItem('dev_access'),
+      emergencyAccess: localStorage.getItem('emergency_access')
+    },
+    sessionStorage: {
+      reloadCount: sessionStorage.getItem('reload_count'),
+      sessionStart: sessionStorage.getItem('session_start')
+    }
+  });
 };
