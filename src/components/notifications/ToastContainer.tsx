@@ -26,7 +26,7 @@ export const ToastContainer: React.FC = () => {
     });
   }, [notifications, config.inApp.toast, activeToasts]);
 
-  const handleRemoveToast = (id: number) => {
+  const handleRemoveToast = (id: string) => {
     setActiveToasts(prev => prev.filter(toast => toast.id !== id));
   };
 

@@ -5,6 +5,26 @@ import { useDismissedNotifications } from '@/hooks/useDismissedNotifications';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { useToast } from '@/hooks/use-toast';
 
+interface NotificationConfig {
+  inApp: {
+    sons: boolean;
+    toast: boolean;
+    badges: boolean;
+    modal: boolean;
+  };
+  whatsapp: {
+    ativo: boolean;
+    tipos: string[];
+    horario: string;
+    dias?: string[];
+  };
+  email: {
+    ativo: boolean;
+    tipos?: string[];
+    frequencia?: string;
+  };
+}
+
 interface NotificationContextType {
   notifications: any[];
   unreadCount: number;
@@ -13,7 +33,29 @@ interface NotificationContextType {
   removeNotification: (id: string) => void;
   togglePin: (id: string) => void;
   refreshNotifications: () => void;
+  config: NotificationConfig;
+  updateConfig: (newConfig: NotificationConfig) => void;
 }
+
+const defaultConfig: NotificationConfig = {
+  inApp: {
+    sons: true,
+    toast: true,
+    badges: true,
+    modal: true
+  },
+  whatsapp: {
+    ativo: true,
+    tipos: ['novo_cliente', 'recomendacao_ia', 'alerta_tempo', 'meta_atingida'],
+    horario: '08:00-18:00',
+    dias: ['seg', 'ter', 'qua', 'qui', 'sex']
+  },
+  email: {
+    ativo: false,
+    tipos: ['relatorio_diario', 'relatorio_semanal'],
+    frequencia: 'diario'
+  }
+};
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
@@ -26,6 +68,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [readNotifications, setReadNotifications] = useState<Set<string>>(new Set());
   const [pinnedNotifications, setPinnedNotifications] = useState<Set<string>>(new Set());
   const [previousCount, setPreviousCount] = useState(0);
+  const [config, setConfig] = useState<NotificationConfig>(defaultConfig);
 
   // Combinar notificações reais com estados locais
   const notifications = realNotifications.map(notification => ({
@@ -42,12 +85,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const newNotifications = notifications.slice(0, notifications.length - previousCount);
       const hasUrgent = newNotifications.some(n => n.prioridade === 'critica');
       
-      if (hasUrgent) {
+      if (hasUrgent && config.inApp.sons) {
         playSound();
       }
     }
     setPreviousCount(notifications.length);
-  }, [notifications.length, loading, previousCount, playSound]);
+  }, [notifications.length, loading, previousCount, playSound, config.inApp.sons]);
 
   const markAsRead = useCallback((id: string) => {
     setReadNotifications(prev => new Set([...prev, id]));
@@ -99,6 +142,24 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
   }, []);
 
+  const updateConfig = useCallback((newConfig: NotificationConfig) => {
+    setConfig(newConfig);
+    // Here you could also save to localStorage or send to backend
+    localStorage.setItem('notificationConfig', JSON.stringify(newConfig));
+  }, []);
+
+  // Load config from localStorage on mount
+  React.useEffect(() => {
+    const savedConfig = localStorage.getItem('notificationConfig');
+    if (savedConfig) {
+      try {
+        setConfig(JSON.parse(savedConfig));
+      } catch (error) {
+        console.error('Error loading notification config:', error);
+      }
+    }
+  }, []);
+
   return (
     <NotificationContext.Provider
       value={{
@@ -108,7 +169,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         markAllAsRead,
         removeNotification,
         togglePin,
-        refreshNotifications
+        refreshNotifications,
+        config,
+        updateConfig
       }}
     >
       {children}
