@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -293,7 +292,6 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
 
       // 5. Chamar Dify para gerar resposta
       console.log(`🤖 [${requestId}] Chamando Dify para gerar resposta...`)
-      console.log(`🤖 [${requestId}] URL: ${credentials.difyBaseUrl}/v1/chat-messages`)
       
       try {
         const difyResponse = await callDifyAPI(messageContent, conversation.dify_conversation_id, requestId, credentials)
@@ -461,7 +459,8 @@ async function callDifyAPI(message: string, conversationId: string | null, reque
     console.log(`   - API Key: ${difyApiKey ? `${difyApiKey.substring(0, 10)}...` : 'AUSENTE'}`)
     console.log(`   - Conversation ID: ${conversationId || 'Nova conversa'}`)
 
-    const url = `${difyBaseUrl}/v1/chat-messages`
+    // CORREÇÃO: Remover duplicação de /v1 na URL
+    const url = `${difyBaseUrl}/chat-messages`
     
     const requestBody: any = {
       inputs: {},
@@ -486,16 +485,40 @@ async function callDifyAPI(message: string, conversationId: string | null, reque
       body: JSON.stringify(requestBody)
     })
 
-    const responseData = await response.json()
-    
     console.log(`🤖 [${requestId}] Status da resposta Dify: ${response.status}`)
     console.log(`🤖 [${requestId}] Headers da resposta:`, Object.fromEntries(response.headers.entries()))
-    console.log(`🤖 [${requestId}] Resposta completa do Dify:`, JSON.stringify(responseData, null, 2))
+
+    // Verificar se a resposta é JSON antes de tentar fazer parse
+    const contentType = response.headers.get('content-type')
+    console.log(`🤖 [${requestId}] Content-Type da resposta: ${contentType}`)
+
+    const responseText = await response.text()
+    console.log(`🤖 [${requestId}] Resposta bruta do Dify (primeiros 500 chars):`, responseText.substring(0, 500))
 
     if (!response.ok) {
-      console.error(`❌ [${requestId}] Erro HTTP ${response.status} na API do Dify:`, responseData)
+      console.error(`❌ [${requestId}] Erro HTTP ${response.status} na API do Dify`)
+      console.error(`❌ [${requestId}] Resposta completa:`, responseText)
       return null
     }
+
+    // Verificar se a resposta é HTML (indica erro)
+    if (responseText.trim().startsWith('<!doctype') || responseText.trim().startsWith('<html')) {
+      console.error(`❌ [${requestId}] Dify retornou HTML em vez de JSON - URL pode estar incorreta`)
+      console.error(`❌ [${requestId}] URL usada: ${url}`)
+      console.error(`❌ [${requestId}] Resposta HTML:`, responseText.substring(0, 200))
+      return null
+    }
+
+    let responseData
+    try {
+      responseData = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error(`❌ [${requestId}] Erro ao fazer parse JSON da resposta:`, parseError)
+      console.error(`❌ [${requestId}] Resposta que causou erro:`, responseText.substring(0, 200))
+      return null
+    }
+
+    console.log(`🤖 [${requestId}] Resposta JSON do Dify:`, JSON.stringify(responseData, null, 2))
 
     if (!responseData.answer) {
       console.error(`❌ [${requestId}] Resposta do Dify sem campo 'answer':`, responseData)
@@ -574,4 +597,4 @@ async function sendWhatsAppMessage(to: string, message: string, requestId: strin
   }
 }
 
-console.log('🚀 WhatsApp Webhook Function com integração Dify MELHORADA iniciada!')
+console.log('🚀 WhatsApp Webhook Function com integração Dify CORRIGIDA iniciada!')
