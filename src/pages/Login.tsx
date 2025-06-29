@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -21,8 +20,16 @@ export function Login() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockTimeRemaining, setBlockTimeRemaining] = useState(0);
   
-  const { signIn } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirecionar se já estiver logado
+  useEffect(() => {
+    if (!authLoading && user) {
+      console.log('🔄 User is already logged in, redirecting to dashboard...');
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
 
   // Verificar bloqueio ao carregar componente
   useEffect(() => {
@@ -68,6 +75,7 @@ export function Login() {
       return;
     }
 
+    console.log('📝 Login form submitted for:', email);
     setError('');
     setLoading(true);
 
@@ -88,15 +96,20 @@ export function Login() {
       return;
     }
 
+    console.log('🚀 Calling signIn...');
     const result = await signIn(cleanEmail, cleanPassword);
+    console.log('📋 SignIn result:', result);
 
     if (result.success) {
+      console.log('✅ Login successful, should redirect soon...');
       // Limpar tentativas em caso de sucesso
       localStorage.removeItem('login_attempts_count');
       localStorage.removeItem('login_attempts');
       setLoginAttempts(0);
-      navigate('/');
+      
+      // A navegação será feita pelo useEffect que monitora o user
     } else {
+      console.log('❌ Login failed:', result.error);
       // Incrementar tentativas
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
@@ -128,6 +141,18 @@ export function Login() {
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+
+  // Se estiver carregando autenticação, mostrar loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500 mx-auto mb-2" />
+          <p className="text-gray-600">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
