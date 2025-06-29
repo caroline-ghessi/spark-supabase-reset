@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Bot, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const DifyConnectionTest: React.FC = () => {
   const [testMessage, setTestMessage] = useState('Olá, como você pode me ajudar?');
@@ -20,37 +21,54 @@ export const DifyConnectionTest: React.FC = () => {
     setTestResult(null);
 
     try {
-      console.log('🧪 Testando conexão com Dify...');
+      console.log('🧪 Testando conexão com Dify via Supabase Functions...');
       
-      const response = await fetch('/api/test-dify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('test-dify', {
+        body: {
           message: testMessage
-        })
+        }
       });
 
-      const result = await response.json();
-      console.log('🧪 Resultado do teste:', result);
+      console.log('🧪 Resposta da função:', { data, error });
 
-      setTestResult({
-        success: response.ok,
-        data: result,
-        status: response.status
-      });
+      if (error) {
+        console.error('❌ Erro na função Edge:', error);
+        setTestResult({
+          success: false,
+          error: error.message || 'Erro na função Edge',
+          status: 0
+        });
+        
+        toast({
+          title: "Erro na Função Edge",
+          description: error.message || "Falha na execução da função",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      if (response.ok) {
+      if (data?.success) {
+        setTestResult({
+          success: true,
+          data: data,
+          status: 200
+        });
+
         toast({
           title: "Teste Concluído",
           description: "Conexão com Dify testada com sucesso!",
           className: "bg-green-500 text-white",
         });
       } else {
+        setTestResult({
+          success: false,
+          data: data,
+          status: data?.status || 400
+        });
+
         toast({
           title: "Erro no Teste",
-          description: result.error || "Falha na conexão com Dify",
+          description: data?.error || "Falha na conexão com Dify",
           variant: "destructive",
         });
       }
@@ -138,6 +156,13 @@ export const DifyConnectionTest: React.FC = () => {
                 <div className="bg-green-50 p-3 rounded-lg">
                   <h4 className="font-medium text-green-800 mb-2">Resposta do Dify:</h4>
                   <p className="text-green-700 text-sm">{testResult.data.response}</p>
+                  
+                  {testResult.data.details && (
+                    <div className="mt-2 text-xs text-green-600">
+                      <p>Conversation ID: {testResult.data.details.conversation_id}</p>
+                      <p>Message ID: {testResult.data.details.message_id}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -150,15 +175,15 @@ export const DifyConnectionTest: React.FC = () => {
                   <p className="text-red-700 text-sm">
                     {testResult.data?.error || testResult.error || 'Erro desconhecido'}
                   </p>
-                  {testResult.status && (
+                  {testResult.status > 0 && (
                     <p className="text-red-600 text-xs mt-1">
-                      Status HTTP: {testResult.status}
+                      Status: {testResult.status}
                     </p>
                   )}
                 </div>
               )}
 
-              {testResult.data?.details && (
+              {testResult.data?.details && !testResult.success && (
                 <div className="bg-blue-50 p-3 rounded-lg">
                   <h4 className="font-medium text-blue-800 mb-2">Detalhes Técnicos:</h4>
                   <pre className="text-blue-700 text-xs overflow-x-auto">

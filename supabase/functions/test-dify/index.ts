@@ -20,18 +20,22 @@ serve(async (req) => {
     
     const difyApiKey = Deno.env.get('DIFY_API_KEY')
     const difyBaseUrl = Deno.env.get('DIFY_BASE_URL') || 'https://api.dify.ai'
+    const difyAppId = Deno.env.get('DIFY_APP_ID')
     
     console.log('🔍 Verificando credenciais:')
     console.log('  - Dify API Key:', difyApiKey ? `${difyApiKey.substring(0, 10)}...` : 'AUSENTE')
     console.log('  - Dify Base URL:', difyBaseUrl)
+    console.log('  - Dify App ID:', difyAppId ? `${difyAppId.substring(0, 10)}...` : 'AUSENTE')
     
     if (!difyApiKey) {
       console.error('❌ DIFY_API_KEY não configurada')
       return new Response(JSON.stringify({
+        success: false,
         error: 'DIFY_API_KEY não está configurada nas variáveis de ambiente',
         details: {
           missing_credentials: ['DIFY_API_KEY'],
-          base_url: difyBaseUrl
+          base_url: difyBaseUrl,
+          app_id: difyAppId ? 'Configurado' : 'Ausente'
         }
       }), {
         status: 400,
@@ -39,7 +43,9 @@ serve(async (req) => {
       })
     }
 
-    const url = `${difyBaseUrl}/v1/chat-messages`
+    // Construir URL correta - remover /v1 duplicado se existir
+    const cleanBaseUrl = difyBaseUrl.replace(/\/v1$/, '')
+    const url = `${cleanBaseUrl}/v1/chat-messages`
     
     const requestBody = {
       inputs: {},
@@ -59,24 +65,46 @@ serve(async (req) => {
       body: JSON.stringify(requestBody)
     })
 
-    const responseData = await response.json()
+    let responseData
+    const responseText = await response.text()
     
-    console.log('📥 Resposta do Dify:')
+    console.log('📥 Resposta bruta do Dify:', responseText)
+    
+    try {
+      responseData = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('❌ Erro ao fazer parse da resposta:', parseError)
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Resposta inválida do Dify - não é JSON válido',
+        details: {
+          status: response.status,
+          response_text: responseText.substring(0, 500),
+          parse_error: parseError.message
+        }
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    console.log('📥 Resposta processada do Dify:')
     console.log('  - Status:', response.status)
-    console.log('  - Headers:', Object.fromEntries(response.headers.entries()))
     console.log('  - Data:', JSON.stringify(responseData, null, 2))
 
     if (!response.ok) {
       console.error('❌ Erro na API do Dify:', responseData)
       return new Response(JSON.stringify({
+        success: false,
         error: `Erro HTTP ${response.status} na API do Dify`,
         details: {
           status: response.status,
           response: responseData,
-          url: url
+          url: url,
+          request_body: requestBody
         }
       }), {
-        status: response.status,
+        status: 200, // Retornamos 200 mas com success: false
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -84,13 +112,14 @@ serve(async (req) => {
     if (!responseData.answer) {
       console.error('❌ Resposta sem campo "answer":', responseData)
       return new Response(JSON.stringify({
+        success: false,
         error: 'Resposta do Dify não contém o campo "answer"',
         details: {
           received_fields: Object.keys(responseData),
           full_response: responseData
         }
       }), {
-        status: 400,
+        status: 200, // Retornamos 200 mas com success: false
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -103,7 +132,8 @@ serve(async (req) => {
       details: {
         conversation_id: responseData.conversation_id,
         message_id: responseData.message_id,
-        created_at: responseData.created_at
+        created_at: responseData.created_at,
+        url_used: url
       }
     }), {
       status: 200,
@@ -113,13 +143,14 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Erro crítico no teste Dify:', error)
     return new Response(JSON.stringify({
+      success: false,
       error: error.message,
       details: {
         stack: error.stack,
         name: error.name
       }
     }), {
-      status: 500,
+      status: 200, // Retornamos 200 mas com success: false para evitar erro de parse
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
