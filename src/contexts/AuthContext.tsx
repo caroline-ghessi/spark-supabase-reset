@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import type { DatabaseUser } from '@/types/auth';
 
 interface User {
   id: string;
@@ -39,10 +40,6 @@ const DEV_CONFIG = {
     role: 'admin' as const,
     first_login_completed: true
   }
-};
-
-const EMERGENCY_CONFIG = {
-  route: '/emergency-access-2024'
 };
 
 // Mapeamento de permissões por role
@@ -186,8 +183,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserData = async (userId: string) => {
     try {
+      // Usar query customizada para contornar limitações de tipos
       const { data, error } = await supabase
-        .from('users')
+        .from('users' as any)
         .select('*')
         .eq('id', userId)
         .single();
@@ -197,13 +195,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
+      const userData = data as DatabaseUser;
       setUser({
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        role: data.role,
-        seller_id: data.seller_id,
-        first_login_completed: data.first_login_completed
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        seller_id: userData.seller_id,
+        first_login_completed: userData.first_login_completed
       });
     } catch (error) {
       console.error('Erro ao carregar dados do usuário:', error);
@@ -267,7 +266,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Se o usuário foi criado, criar perfil
       if (data.user) {
         const { error: profileError } = await supabase
-          .from('users')
+          .from('users' as any)
           .insert({
             id: data.user.id,
             email: email,

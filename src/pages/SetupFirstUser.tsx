@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -6,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UserPlus, CheckCircle } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function SetupFirstUser() {
@@ -30,8 +28,9 @@ export function SetupFirstUser() {
 
   const checkExistingUsers = async () => {
     try {
+      // Usar query customizada para contornar limitações de tipos
       const { count } = await supabase
-        .from('users')
+        .from('users' as any)
         .select('*', { count: 'exact', head: true });
       
       setHasUsers((count ?? 0) > 0);

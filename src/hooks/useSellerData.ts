@@ -2,14 +2,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
-
-interface SellerMetrics {
-  totalConversations: number;
-  conversionRate: number;
-  salesToday: number;
-  activeConversations: number;
-  spinScore?: number;
-}
+import type { SellerMetrics } from '@/types/auth';
 
 export function useSellerData() {
   const { user, isSeller, isAdmin, isSupervisor } = useAuth();
@@ -27,15 +20,35 @@ export function useSellerData() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .rpc('get_seller_metrics', { seller_uuid: user.seller_id });
+      // Usar query customizada já que get_seller_metrics não está nos tipos
+      const { data: conversations, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('assigned_seller_id', user.seller_id);
 
       if (error) {
         console.error('Erro ao carregar métricas:', error);
         return;
       }
 
-      setMetrics(data);
+      // Calcular métricas manualmente
+      const totalConversations = conversations?.length || 0;
+      const soldConversations = conversations?.filter(c => c.status === 'sold').length || 0;
+      const conversionRate = totalConversations > 0 ? (soldConversations / totalConversations) * 100 : 0;
+      const salesToday = conversations?.filter(c => 
+        c.status === 'sold' && 
+        new Date(c.updated_at || '').toDateString() === new Date().toDateString()
+      ).length || 0;
+      const activeConversations = conversations?.filter(c => 
+        ['bot', 'human', 'transferred'].includes(c.status)
+      ).length || 0;
+
+      setMetrics({
+        totalConversations,
+        conversionRate: Math.round(conversionRate * 100) / 100,
+        salesToday,
+        activeConversations
+      });
     } catch (error) {
       console.error('Erro ao carregar métricas:', error);
     } finally {
@@ -80,7 +93,7 @@ export function useSellerData() {
       return { data: null, error: { message: 'Acesso negado a esta conversa' } };
     }
 
-    // Buscar mensagens
+    // Buscar mensagens usando a função RPC disponível
     const { data, error } = await supabase
       .rpc('get_messages', { conv_id: conversationId });
 
