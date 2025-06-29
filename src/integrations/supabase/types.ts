@@ -680,6 +680,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_admin_user: {
+        Args: { admin_id: string; admin_email: string; admin_name: string }
+        Returns: boolean
+      }
+      ensure_admin_setup: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       get_conversations: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -716,6 +724,10 @@ export type Database = {
           metadata: Json
           created_at: string
         }[]
+      }
+      link_user_to_seller: {
+        Args: { user_email: string; seller_phone: string }
+        Returns: boolean
       }
     }
     Enums: {
