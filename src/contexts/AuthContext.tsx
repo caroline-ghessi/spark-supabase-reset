@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
@@ -95,9 +96,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Configurar listener de autenticação PRIMEIRO
+    console.log('🔄 AuthProvider: Inicializando...');
+    
+    // Configurar listener de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('🔑 Auth event:', event, session?.user?.email);
         
         // Log de eventos de segurança
@@ -109,18 +112,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         setSession(session);
         
+        // CORREÇÃO CRÍTICA: Usar setTimeout para evitar recursão
         if (session?.user) {
-          console.log('📊 Loading user data for:', session.user.email);
-          await loadUserData(session.user.id);
+          console.log('📊 Carregando dados do usuário (diferido):', session.user.email);
+          setTimeout(() => {
+            loadUserData(session.user.id);
+          }, 0);
         } else {
-          console.log('🚫 No session, clearing user data');
+          console.log('🚫 Sem sessão, limpando dados do usuário');
           setUser(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
-    // DEPOIS verificar sessão existente
+    // Verificar sessão inicial
     checkInitialSession();
 
     return () => subscription.unsubscribe();
@@ -128,7 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const checkInitialSession = async () => {
     try {
-      console.log('🔍 Checking initial session...');
+      console.log('🔍 Verificando sessão inicial...');
       
       // Verificar acesso de emergência (agora mais seguro)
       if (checkEmergencyAccess()) {
@@ -151,15 +157,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      console.log('📋 Initial session check:', session?.user?.email || 'No session');
+      console.log('📋 Verificação de sessão inicial:', session?.user?.email || 'Sem sessão');
 
       if (session?.user) {
         setSession(session);
-        await loadUserData(session.user.id);
+        // CORREÇÃO: Usar setTimeout para evitar recursão
+        setTimeout(() => {
+          loadUserData(session.user.id);
+        }, 0);
+      } else {
+        setLoading(false);
       }
     } catch (error) {
       console.error('💥 Erro na verificação inicial:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -247,9 +257,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserData = async (userId: string) => {
     try {
-      console.log('🔄 Loading user data for ID:', userId);
+      console.log('🔄 Carregando dados do usuário para ID:', userId);
       
-      // Usar query customizada para contornar limitações de tipos
+      // CORREÇÃO CRÍTICA: Tratamento melhorado de erro RLS
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -258,6 +268,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('❌ Erro ao carregar dados do usuário:', error);
+        console.error('❌ Detalhes do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         
         // Se o erro for que não encontrou o usuário, criar um perfil básico
         if (error.code === 'PGRST116') {
@@ -265,10 +281,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           await createUserProfile(userId);
           return;
         }
+        
+        // Se for erro de RLS, tentar aguardar e recarregar
+        if (error.message?.includes('RLS') || error.message?.includes('policy')) {
+          console.warn('⚠️ Erro de RLS detectado, tentando novamente em 1 segundo...');
+          setTimeout(() => {
+            loadUserData(userId);
+          }, 1000);
+          return;
+        }
+        
+        setLoading(false);
         return;
       }
 
-      console.log('✅ User data loaded successfully:', data);
+      console.log('✅ Dados do usuário carregados com sucesso:', data);
 
       // Converter dados do usuário
       const userData = data as unknown as DatabaseUser;
@@ -283,7 +310,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       setUser(userProfile);
       
-      console.log('🎉 User profile set:', {
+      console.log('🎉 Perfil do usuário definido:', {
         email: userProfile.email,
         role: userProfile.role,
         name: userProfile.name
@@ -291,18 +318,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
     } catch (error) {
       console.error('💥 Erro crítico ao carregar dados do usuário:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const createUserProfile = async (userId: string) => {
     try {
-      console.log('🔨 Creating user profile for:', userId);
+      console.log('🔨 Criando perfil do usuário para:', userId);
       
       // Buscar dados do auth.users
       const { data: authUser } = await supabase.auth.getUser();
       
       if (!authUser.user) {
-        console.error('❌ No auth user found');
+        console.error('❌ Usuário auth não encontrado');
+        setLoading(false);
         return;
       }
 
@@ -318,14 +348,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('❌ Erro ao criar perfil do usuário:', error);
+        setLoading(false);
         return;
       }
 
-      console.log('✅ User profile created, reloading data...');
-      await loadUserData(userId);
+      console.log('✅ Perfil do usuário criado, recarregando dados...');
+      // CORREÇÃO: Usar setTimeout para evitar recursão
+      setTimeout(() => {
+        loadUserData(userId);
+      }, 0);
       
     } catch (error) {
       console.error('💥 Erro ao criar perfil do usuário:', error);
+      setLoading(false);
     }
   };
 
@@ -377,7 +412,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('🔐 Attempting login for:', email);
+      console.log('🔐 Tentativa de login para:', email);
       
       // Validação e sanitização de input
       const cleanEmail = sanitizeInput(email.toLowerCase().trim());
@@ -417,19 +452,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       // Login normal via Supabase
-      console.log('🔑 Attempting Supabase login...');
+      console.log('🔑 Tentando login no Supabase...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: cleanPassword
       });
 
       if (error) {
-        console.error('❌ Login error:', error);
+        console.error('❌ Erro no login:', error);
         logSecurityEvent('LOGIN_FAILED', { email: cleanEmail, error: error.message });
         throw error;
       }
 
-      console.log('✅ Supabase login successful:', data.user?.email);
+      console.log('✅ Login no Supabase bem-sucedido:', data.user?.email);
 
       // Limpar rate limiting em caso de sucesso
       LOGIN_ATTEMPTS.delete(cleanEmail);
@@ -448,7 +483,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      // Validação e sanitização de input
+      // Validação and sanitização de input
       const cleanEmail = sanitizeInput(email.toLowerCase().trim());
       const cleanPassword = sanitizeInput(password);
       const cleanName = sanitizeInput(name.trim());
@@ -515,7 +550,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async () => {
     try {
-      console.log('🔓 Logging out user:', user?.email);
+      console.log('🔓 Fazendo logout do usuário:', user?.email);
       logSecurityEvent('LOGOUT_INITIATED', { userId: user?.id });
       
       // Limpar acessos especiais
