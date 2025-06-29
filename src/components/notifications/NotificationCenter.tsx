@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, Settings, X } from 'lucide-react';
+import { Bell, Settings, X, Trash2 } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { NotificationBadge } from './NotificationBadge';
 import { NotificationFilters } from './NotificationFilters';
@@ -13,7 +13,8 @@ export const NotificationCenter: React.FC = () => {
     markAsRead, 
     markAllAsRead, 
     removeNotification, 
-    togglePin 
+    togglePin,
+    refreshNotifications 
   } = useNotifications();
   
   const [isOpen, setIsOpen] = useState(false);
@@ -39,7 +40,7 @@ export const NotificationCenter: React.FC = () => {
     // Apply type filter
     switch (typeFilter) {
       case 'clientes':
-        if (!['nova_mensagem', 'cliente_aguardando', 'novo_cliente'].includes(notification.tipo)) return false;
+        if (!['cliente_aguardando', 'lead_quente', 'nova_mensagem', 'novo_cliente'].includes(notification.tipo)) return false;
         break;
       case 'vendedores':
         if (!['vendedor_inativo', 'meta_atingida'].includes(notification.tipo)) return false;
@@ -48,7 +49,7 @@ export const NotificationCenter: React.FC = () => {
         if (!['backup_concluido', 'erro_integracao'].includes(notification.tipo)) return false;
         break;
       case 'ia':
-        if (!['recomendacao_ia'].includes(notification.tipo)) return false;
+        if (!['recomendacao_ia', 'alto_valor'].includes(notification.tipo)) return false;
         break;
     }
 
@@ -67,6 +68,18 @@ export const NotificationCenter: React.FC = () => {
     if (notification.acao) {
       console.log('Executing action:', notification.acao);
       // Here you would implement the actual action routing
+      if (notification.acao.tipo === 'abrir_conversa') {
+        // Navigate to conversation
+        console.log('Opening conversation:', notification.acao.dados.conversationId);
+      }
+    }
+  };
+
+  const handleDispenseAll = async () => {
+    if (window.confirm('Tem certeza que deseja dispensar todas as notificações? Elas não aparecerão mais.')) {
+      for (const notification of filteredNotifications) {
+        await removeNotification(notification.id);
+      }
     }
   };
 
@@ -108,7 +121,20 @@ export const NotificationCenter: React.FC = () => {
                   )}
                 </div>
                 <div className="flex space-x-2">
-                  <button className="p-1 text-gray-400 hover:text-gray-600">
+                  {filteredNotifications.length > 0 && (
+                    <button 
+                      onClick={handleDispenseAll}
+                      className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Dispensar todas"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button 
+                    onClick={refreshNotifications}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                    title="Atualizar"
+                  >
                     <Settings className="w-4 h-4" />
                   </button>
                   <button 

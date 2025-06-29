@@ -286,6 +286,36 @@ export type Database = {
         }
         Relationships: []
       }
+      dismissed_notifications: {
+        Row: {
+          context_data: Json | null
+          context_id: string
+          created_at: string
+          dismissed_at: string
+          id: string
+          notification_type: string
+          user_id: string | null
+        }
+        Insert: {
+          context_data?: Json | null
+          context_id: string
+          created_at?: string
+          dismissed_at?: string
+          id?: string
+          notification_type: string
+          user_id?: string | null
+        }
+        Update: {
+          context_data?: Json | null
+          context_id?: string
+          created_at?: string
+          dismissed_at?: string
+          id?: string
+          notification_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       escalations: {
         Row: {
           conversation_id: string

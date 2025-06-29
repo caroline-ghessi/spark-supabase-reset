@@ -1,168 +1,125 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Notification, NotificationConfig, mockNotifications, mockNotificationConfigs } from '@/data/notificationsData';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useRealNotifications } from '@/hooks/useRealNotifications';
+import { useDismissedNotifications } from '@/hooks/useDismissedNotifications';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { useToast } from '@/hooks/use-toast';
 
 interface NotificationContextType {
-  notifications: Notification[];
+  notifications: any[];
   unreadCount: number;
-  config: NotificationConfig;
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void;
-  markAsRead: (id: number) => void;
+  markAsRead: (id: string) => void;
   markAllAsRead: () => void;
-  removeNotification: (id: number) => void;
-  updateConfig: (newConfig: NotificationConfig) => void;
-  togglePin: (id: number) => void;
-  playNotificationSound: (soundFile?: string) => void;
+  removeNotification: (id: string) => void;
+  togglePin: (id: string) => void;
+  refreshNotifications: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export const useNotifications = () => {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
-  }
-  return context;
-};
-
-interface NotificationProviderProps {
-  children: ReactNode;
-}
-
-export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
-  const [config, setConfig] = useState<NotificationConfig>(mockNotificationConfigs.carol);
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { notifications: realNotifications, loading, refreshNotifications } = useRealNotifications();
+  const { dismissNotification } = useDismissedNotifications();
+  const { playSound } = useNotificationSound();
   const { toast } = useToast();
+  
+  const [readNotifications, setReadNotifications] = useState<Set<string>>(new Set());
+  const [pinnedNotifications, setPinnedNotifications] = useState<Set<string>>(new Set());
+  const [previousCount, setPreviousCount] = useState(0);
+
+  // Combinar notificações reais com estados locais
+  const notifications = realNotifications.map(notification => ({
+    ...notification,
+    lida: readNotifications.has(notification.id),
+    fixada: pinnedNotifications.has(notification.id)
+  }));
 
   const unreadCount = notifications.filter(n => !n.lida).length;
 
-  const addNotification = (notificationData: Omit<Notification, 'id' | 'timestamp'>) => {
-    const newNotification: Notification = {
-      ...notificationData,
-      id: Date.now(),
-      timestamp: new Date().toISOString()
-    };
+  // Tocar som quando novas notificações chegarem
+  React.useEffect(() => {
+    if (!loading && notifications.length > previousCount && previousCount > 0) {
+      const newNotifications = notifications.slice(0, notifications.length - previousCount);
+      const hasUrgent = newNotifications.some(n => n.prioridade === 'critica');
+      
+      if (hasUrgent) {
+        playSound();
+      }
+    }
+    setPreviousCount(notifications.length);
+  }, [notifications.length, loading, previousCount, playSound]);
 
-    setNotifications(prev => [newNotification, ...prev]);
+  const markAsRead = useCallback((id: string) => {
+    setReadNotifications(prev => new Set([...prev, id]));
+  }, []);
 
-    // Show toast if enabled
-    if (config.inApp.toast) {
-      const bgColor = 
-        newNotification.prioridade === 'critica' ? 'bg-red-500' :
-        newNotification.prioridade === 'alta' ? 'bg-orange-500' :
-        newNotification.prioridade === 'media' ? 'bg-blue-500' : 'bg-gray-500';
+  const markAllAsRead = useCallback(() => {
+    const allIds = notifications.map(n => n.id);
+    setReadNotifications(new Set(allIds));
+  }, [notifications]);
 
+  const removeNotification = useCallback(async (id: string) => {
+    const notification = notifications.find(n => n.id === id);
+    if (!notification) return;
+
+    // Extrair tipo e context_id do ID
+    const parts = id.split('-');
+    const notificationType = parts[0];
+    const contextId = parts.slice(1).join('-');
+
+    const success = await dismissNotification(notificationType, contextId, {
+      titulo: notification.titulo,
+      dismissed_at: new Date().toISOString()
+    });
+
+    if (success) {
       toast({
-        title: newNotification.titulo,
-        description: newNotification.mensagem,
-        className: `${bgColor} text-white border-0`,
+        title: "Notificação dispensada",
+        description: "Esta notificação não aparecerá mais.",
+      });
+      refreshNotifications();
+    } else {
+      toast({
+        title: "Erro",
+        description: "Não foi possível dispensar a notificação.",
+        variant: "destructive"
       });
     }
+  }, [notifications, dismissNotification, refreshNotifications, toast]);
 
-    // Play sound if enabled
-    if (config.inApp.sons && newNotification.som) {
-      playNotificationSound(newNotification.som);
-    }
-  };
-
-  const markAsRead = (id: number) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id ? { ...notification, lida: true } : notification
-      )
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, lida: true }))
-    );
-  };
-
-  const removeNotification = (id: number) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id));
-  };
-
-  const updateConfig = (newConfig: NotificationConfig) => {
-    setConfig(newConfig);
-  };
-
-  const togglePin = (id: number) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id 
-          ? { ...notification, fixada: !notification.fixada } 
-          : notification
-      )
-    );
-  };
-
-  const playNotificationSound = (soundFile: string = 'notification.mp3') => {
-    if (config.inApp.sons) {
-      const audio = new Audio(`/sounds/${soundFile}`);
-      audio.volume = 0.7;
-      audio.play().catch(console.error);
-    }
-  };
-
-  // Simulate real-time notifications
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const randomEvents = [
-        {
-          tipo: "nova_mensagem",
-          prioridade: "alta" as const,
-          titulo: "Nova Mensagem",
-          mensagem: "Cliente enviou uma nova mensagem",
-          lida: false,
-          fixada: false,
-          destinatario: "carol",
-          icone: "message-circle",
-          cor: "blue",
-          canais: ["inApp"],
-          contexto: { cliente: "Cliente Simulado" }
-        },
-        {
-          tipo: "recomendacao_ia",
-          prioridade: "media" as const,
-          titulo: "Recomendação da IA",
-          mensagem: "IA sugere enviar material específico",
-          lida: false,
-          fixada: false,
-          destinatario: "carol",
-          icone: "lightbulb",
-          cor: "purple",
-          canais: ["inApp"],
-          contexto: { probabilidade: 85 }
-        }
-      ];
-
-      if (Math.random() > 0.8) { // 20% chance every interval
-        const randomEvent = randomEvents[Math.floor(Math.random() * randomEvents.length)];
-        addNotification(randomEvent);
+  const togglePin = useCallback((id: string) => {
+    setPinnedNotifications(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
       }
-    }, 30000); // Every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [config]);
+      return newSet;
+    });
+  }, []);
 
   return (
     <NotificationContext.Provider
       value={{
         notifications,
         unreadCount,
-        config,
-        addNotification,
         markAsRead,
         markAllAsRead,
         removeNotification,
-        updateConfig,
         togglePin,
-        playNotificationSound
+        refreshNotifications
       }}
     >
       {children}
     </NotificationContext.Provider>
   );
+};
+
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (context === undefined) {
+    throw new Error('useNotifications must be used within a NotificationProvider');
+  }
+  return context;
 };
