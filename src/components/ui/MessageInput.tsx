@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip } from 'lucide-react';
 import { useOptimisticMessages } from '@/hooks/useOptimisticMessages';
 import { EmojiPicker } from './EmojiPicker';
+import { Button } from '@/components/ui/button';
 import { replaceShortcutsWithEmojis, endsWithShortcut } from '@/utils/emojiShortcuts';
 
 interface MessageInputProps {
@@ -160,7 +161,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       
       {/* Dica de atalhos */}
       <div className="text-xs text-gray-400">
-        Enter para enviar • Shift+Enter para quebra de linha • :) :D <3 para emojis
+        Enter para enviar • Shift+Enter para quebra de linha • :) :D &lt;3 para emojis
       </div>
     </div>
   );
