@@ -7,11 +7,15 @@ import { RealConversation, RealMessage } from '@/types/whatsapp';
 interface UseWhatsAppRealtimeProps {
   setConversations: React.Dispatch<React.SetStateAction<RealConversation[]>>;
   setMessages: React.Dispatch<React.SetStateAction<Record<string, RealMessage[]>>>;
+  selectedConversation?: RealConversation | null;
+  onConversationUpdate?: (conversation: RealConversation) => void;
 }
 
 export const useWhatsAppRealtime = ({
   setConversations,
-  setMessages
+  setMessages,
+  selectedConversation,
+  onConversationUpdate
 }: UseWhatsAppRealtimeProps) => {
   const { toast } = useToast();
 
@@ -38,11 +42,29 @@ export const useWhatsAppRealtime = ({
           });
         } else if (payload.eventType === 'UPDATE') {
           const updatedConversation = payload.new as RealConversation;
+          console.log('🔄 Conversa atualizada:', updatedConversation.id, updatedConversation.status);
+          
           setConversations(prev => 
             prev.map(conv => 
               conv.id === updatedConversation.id ? updatedConversation : conv
             )
           );
+
+          // Callback para atualizar conversa selecionada se necessário
+          if (onConversationUpdate) {
+            onConversationUpdate(updatedConversation);
+          }
+
+          // Toast especial para mudança de status
+          if (selectedConversation && updatedConversation.id === selectedConversation.id) {
+            if (updatedConversation.status === 'manual') {
+              toast({
+                title: "Controle Assumido",
+                description: "Você assumiu o controle da conversa",
+                className: "bg-orange-500 text-white",
+              });
+            }
+          }
         }
       })
       .subscribe((status) => {
@@ -116,5 +138,5 @@ export const useWhatsAppRealtime = ({
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(notificationsChannel);
     };
-  }, [setConversations, setMessages, toast]);
+  }, [setConversations, setMessages, toast, selectedConversation, onConversationUpdate]);
 };

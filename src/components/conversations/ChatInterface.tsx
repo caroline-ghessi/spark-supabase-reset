@@ -21,11 +21,28 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onTakeControl
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isManualControl, setIsManualControl] = useState(conversation.status === 'manual');
+
+  // Sincronizar estado local com mudanças na conversa
+  useEffect(() => {
+    console.log('🔄 Status da conversa mudou:', conversation.status);
+    setIsManualControl(conversation.status === 'manual');
+  }, [conversation.status]);
 
   // Auto-scroll para última mensagem
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleTakeControl = async () => {
+    console.log('🎯 Assumindo controle via ChatInterface');
+    try {
+      await onTakeControl();
+      // O estado será atualizado automaticamente via useEffect quando conversation.status mudar
+    } catch (error) {
+      console.error('❌ Erro ao assumir controle:', error);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -41,6 +58,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div>
               <h3 className="font-medium text-gray-900">{conversation.client_name}</h3>
               <p className="text-sm text-gray-500">{conversation.client_phone}</p>
+              <p className="text-xs text-gray-400">
+                Status: {conversation.status} | Local: {isManualControl ? 'manual' : 'não-manual'}
+              </p>
             </div>
           </div>
           
@@ -48,7 +68,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <TakeControlButton 
               conversationId={conversation.id}
               currentStatus={conversation.status}
-              onTakeControl={onTakeControl}
+              onTakeControl={handleTakeControl}
             />
             <TransferToSellerButton conversationId={conversation.id} />
             <button className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100">
@@ -78,8 +98,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <MessageInput 
           conversationId={conversation.id}
           onSendMessage={onSendMessage}
-          disabled={conversation.status !== 'manual'}
+          disabled={!isManualControl}
         />
+        {!isManualControl && (
+          <p className="text-xs text-orange-600 mt-2">
+            ⚠️ Status atual: {conversation.status} - Assuma o controle para enviar mensagens
+          </p>
+        )}
       </div>
     </div>
   );

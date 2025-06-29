@@ -6,38 +6,44 @@ import { EmptyState } from '../ui/EmptyState';
 import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
 import { RealConversation } from '@/types/whatsapp';
 
-interface ConversationsDashboardProps {
-  selectedConversation: RealConversation | null;
-  onSelectConversation: (conversation: RealConversation) => void;
-}
-
-export const ConversationsDashboard: React.FC<ConversationsDashboardProps> = ({
-  selectedConversation,
-  onSelectConversation
-}) => {
+export const ConversationsDashboard: React.FC = () => {
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  
   const {
     conversations,
     messages,
     loading,
     loadMessages,
     sendMessage,
-    takeControl
+    takeControl,
+    selectedConversation,
+    setSelectedConversation
   } = useWhatsAppIntegration();
 
+  // Encontrar a conversa selecionada na lista atual
+  const currentSelectedConversation = selectedConversationId 
+    ? conversations.find(conv => conv.id === selectedConversationId) || null
+    : null;
+
   const handleSelectConversation = async (conversation: RealConversation) => {
-    onSelectConversation(conversation);
+    console.log('📱 Selecionando conversa:', conversation.id, 'Status:', conversation.status);
+    setSelectedConversationId(conversation.id);
+    setSelectedConversation(conversation);
     await loadMessages(conversation.id);
   };
 
   const handleSendMessage = async (message: string) => {
-    if (!selectedConversation) return;
-    await sendMessage(selectedConversation.id, message);
+    if (!currentSelectedConversation) return;
+    await sendMessage(currentSelectedConversation.id, message);
   };
 
   const handleTakeControl = async () => {
-    if (!selectedConversation) return;
-    await takeControl(selectedConversation.id);
+    if (!currentSelectedConversation) return;
+    await takeControl(currentSelectedConversation.id);
   };
+
+  // Usar a conversa mais atualizada (do real-time) ou a selecionada localmente
+  const conversationToDisplay = selectedConversation || currentSelectedConversation;
 
   return (
     <div className="flex-1 flex h-full">
@@ -45,7 +51,7 @@ export const ConversationsDashboard: React.FC<ConversationsDashboardProps> = ({
       <div className="w-1/3 border-r border-gray-200 bg-white">
         <ConversationsList
           conversations={conversations}
-          selectedConversation={selectedConversation}
+          selectedConversation={conversationToDisplay}
           onSelectConversation={handleSelectConversation}
           loading={loading}
         />
@@ -53,10 +59,10 @@ export const ConversationsDashboard: React.FC<ConversationsDashboardProps> = ({
       
       {/* Interface de Chat */}
       <div className="flex-1 flex flex-col">
-        {selectedConversation ? (
+        {conversationToDisplay ? (
           <ChatInterface 
-            conversation={selectedConversation}
-            messages={messages[selectedConversation.id] || []}
+            conversation={conversationToDisplay}
+            messages={messages[conversationToDisplay.id] || []}
             onSendMessage={handleSendMessage}
             onTakeControl={handleTakeControl}
           />
