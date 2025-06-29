@@ -748,6 +748,14 @@ export type Database = {
           closed_at: string
         }[]
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_current_user_seller_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_messages: {
         Args: { conv_id: string }
         Returns: {
@@ -765,6 +773,14 @@ export type Database = {
           metadata: Json
           created_at: string
         }[]
+      }
+      has_role: {
+        Args: { role_name: string }
+        Returns: boolean
+      }
+      is_seller: {
+        Args: { seller_uuid: string }
+        Returns: boolean
       }
       link_user_to_seller: {
         Args: { user_email: string; seller_phone: string }
