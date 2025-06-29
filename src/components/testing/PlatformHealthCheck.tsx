@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Activity, Clock, Play } from 'lucide-react';
+import { Activity, Clock, Play, Bot } from 'lucide-react';
 import { TestResult } from './types';
 import { TestRunner } from './TestRunner';
 import { TestResultsCard } from './TestResultsCard';
 import { TestSummaryCard } from './TestSummaryCard';
+import { DifyConnectionTest } from '@/components/whatsapp/DifyConnectionTest';
 
 export const PlatformHealthCheck: React.FC = () => {
   const [tests, setTests] = useState<TestResult[]>([
@@ -86,65 +88,98 @@ export const PlatformHealthCheck: React.FC = () => {
             <div>
               <CardTitle className="flex items-center space-x-2">
                 <Activity className="w-6 h-6 text-orange-600" />
-                <span>Teste Final da Plataforma</span>
+                <span>Teste Sistema - Diagnóstico Completo</span>
               </CardTitle>
               <p className="text-gray-600 mt-1">
-                Verificação completa de todas as funcionalidades antes de ir para produção
+                Verificação completa de todas as funcionalidades e integrações da plataforma
               </p>
             </div>
-            
-            <Button
-              onClick={runAllTests}
-              disabled={isRunning}
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-            >
-              {isRunning ? (
-                <>
-                  <Clock className="w-4 h-4 mr-2 animate-spin" />
-                  Executando...
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Executar Testes
-                </>
-              )}
-            </Button>
           </div>
         </CardHeader>
-        
-        {overallStatus !== 'idle' && (
-          <CardContent>
-            <div className="flex items-center space-x-4 text-sm">
-              <div className="flex items-center space-x-2">
-                <Badge className="bg-green-100 text-green-800">
-                  ✅ {successfulTests} Sucessos
-                </Badge>
-              </div>
-              
-              {failedTests > 0 && (
-                <div className="flex items-center space-x-2">
-                  <Badge className="bg-red-100 text-red-800">
-                    ❌ {failedTests} Falhas
-                  </Badge>
-                </div>
-              )}
-              
-              <div className="flex items-center space-x-2">
-                <Badge className="bg-blue-100 text-blue-800">
-                  📊 {successfulTests}/{tests.length} Completos
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        )}
       </Card>
 
-      {/* Lista de Testes */}
-      <TestResultsCard tests={tests} />
+      {/* Abas de Testes */}
+      <Tabs defaultValue="platform" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="platform" className="flex items-center space-x-2">
+            <Activity className="w-4 h-4" />
+            <span>Testes Plataforma</span>
+          </TabsTrigger>
+          <TabsTrigger value="dify" className="flex items-center space-x-2">
+            <Bot className="w-4 h-4" />
+            <span>Testes Dify</span>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Resultado Final */}
-      <TestSummaryCard tests={tests} overallStatus={overallStatus} />
+        <TabsContent value="platform" className="space-y-6">
+          {/* Controle dos Testes da Plataforma */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center space-x-2">
+                  <Activity className="w-5 h-5 text-orange-600" />
+                  <span>Testes da Plataforma</span>
+                </CardTitle>
+                
+                <Button
+                  onClick={runAllTests}
+                  disabled={isRunning}
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  {isRunning ? (
+                    <>
+                      <Clock className="w-4 h-4 mr-2 animate-spin" />
+                      Executando...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Executar Testes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            
+            {overallStatus !== 'idle' && (
+              <CardContent>
+                <div className="flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <Badge className="bg-green-100 text-green-800">
+                      ✅ {successfulTests} Sucessos
+                    </Badge>
+                  </div>
+                  
+                  {failedTests > 0 && (
+                    <div className="flex items-center space-x-2">
+                      <Badge className="bg-red-100 text-red-800">
+                        ❌ {failedTests} Falhas
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center space-x-2">
+                    <Badge className="bg-blue-100 text-blue-800">
+                      📊 {successfulTests}/{tests.length} Completos
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Lista de Testes */}
+          <TestResultsCard tests={tests} />
+
+          {/* Resultado Final */}
+          <TestSummaryCard tests={tests} overallStatus={overallStatus} />
+        </TabsContent>
+
+        <TabsContent value="dify" className="space-y-6">
+          {/* Testes do Dify */}
+          <DifyConnectionTest />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -8,7 +8,7 @@ import { WhatsAppChatInterface } from './WhatsAppChatInterface';
 import { WhatsAppTestPanel } from './WhatsAppTestPanel';
 import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
 import { RealConversation } from '@/types/whatsapp';
-import { MessageSquare, Bot, User, Clock, AlertTriangle, TestTube } from 'lucide-react';
+import { MessageSquare, Bot, User, AlertTriangle, TestTube } from 'lucide-react';
 
 export const WhatsAppDashboard: React.FC = () => {
   const {
@@ -137,7 +137,7 @@ export const WhatsAppDashboard: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="diagnostics" className="flex items-center space-x-2">
             <TestTube className="w-4 h-4" />
-            <span>Diagnóstico</span>
+            <span>Diagnóstico WhatsApp</span>
           </TabsTrigger>
         </TabsList>
         

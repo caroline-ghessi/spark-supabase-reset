@@ -10,8 +10,6 @@ import { Separator } from '@/components/ui/separator';
 import { 
   TestTube, 
   MessageSquare, 
-  Bot, 
-  Settings, 
   CheckCircle, 
   XCircle, 
   RefreshCw,
@@ -19,7 +17,6 @@ import {
   Phone
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { DifyConnectionTest } from './DifyConnectionTest';
 
 export const WhatsAppTestPanel: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -72,26 +69,7 @@ export const WhatsAppTestPanel: React.FC = () => {
       };
       setTestResults([...newResults]);
 
-      // Teste 3: Conectividade com Dify
-      console.log('🧪 Testando conectividade Dify...');
-      newResults.push({
-        id: 'dify',
-        name: 'Conectividade Dify',
-        status: 'testing',
-        message: 'Testando conexão com Dify...'
-      });
-      setTestResults([...newResults]);
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      newResults[2] = {
-        ...newResults[2],
-        status: 'warning',
-        message: 'Verifique as credenciais do Dify nas configurações'
-      };
-      setTestResults([...newResults]);
-
-      // Teste 4: Webhook
+      // Teste 3: Webhook
       console.log('🧪 Testando webhook...');
       newResults.push({
         id: 'webhook',
@@ -103,8 +81,8 @@ export const WhatsAppTestPanel: React.FC = () => {
 
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      newResults[3] = {
-        ...newResults[3],
+      newResults[2] = {
+        ...newResults[2],
         status: 'success',
         message: 'Webhook configurado e ativo'
       };
@@ -112,7 +90,7 @@ export const WhatsAppTestPanel: React.FC = () => {
 
       toast({
         title: "Testes Concluídos",
-        description: "Diagnóstico da plataforma finalizado",
+        description: "Diagnóstico do WhatsApp finalizado",
         className: "bg-blue-500 text-white",
       });
 
@@ -211,14 +189,13 @@ export const WhatsAppTestPanel: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Diagnóstico da Plataforma</h2>
-        <p className="text-gray-600">Teste e valide as integrações do sistema</p>
+        <h2 className="text-2xl font-bold text-gray-900">Diagnóstico WhatsApp</h2>
+        <p className="text-gray-600">Teste e valide as integrações do WhatsApp Business</p>
       </div>
 
       <Tabs defaultValue="diagnostics" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="diagnostics">Diagnósticos</TabsTrigger>
-          <TabsTrigger value="dify">Teste Dify</TabsTrigger>
           <TabsTrigger value="message">Enviar Teste</TabsTrigger>
         </TabsList>
 
@@ -227,7 +204,7 @@ export const WhatsAppTestPanel: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <TestTube className="w-5 h-5" />
-                <span>Testes de Conectividade</span>
+                <span>Testes de Conectividade WhatsApp</span>
               </CardTitle>
             </CardHeader>
             
@@ -245,7 +222,7 @@ export const WhatsAppTestPanel: React.FC = () => {
                 ) : (
                   <>
                     <TestTube className="w-4 h-4 mr-2" />
-                    Executar Diagnóstico Completo
+                    Executar Diagnóstico WhatsApp
                   </>
                 )}
               </Button>
@@ -276,10 +253,6 @@ export const WhatsAppTestPanel: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="dify">
-          <DifyConnectionTest />
         </TabsContent>
 
         <TabsContent value="message">
