@@ -27,6 +27,18 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // Verificar credenciais no início
+    const difyApiKey = Deno.env.get('DIFY_API_KEY')
+    const difyBaseUrl = Deno.env.get('DIFY_BASE_URL') || 'https://api.dify.ai'
+    const whatsappToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN')
+    const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')
+    
+    console.log(`🔍 [${requestId}] Verificando credenciais:`)
+    console.log(`   - Dify API Key: ${difyApiKey ? '✅ Configurada' : '❌ Ausente'}`)
+    console.log(`   - Dify Base URL: ${difyBaseUrl}`)
+    console.log(`   - WhatsApp Token: ${whatsappToken ? '✅ Configurado' : '❌ Ausente'}`)
+    console.log(`   - Phone Number ID: ${phoneNumberId ? '✅ Configurado' : '❌ Ausente'}`)
+
     // GET - Verificação do webhook
     if (req.method === 'GET') {
       const mode = url.searchParams.get('hub.mode')
@@ -74,7 +86,12 @@ serve(async (req) => {
             console.log(`🔄 [${requestId}] Change field: ${change.field}`)
             
             if (change.field === 'messages') {
-              const result = await processMessages(supabaseClient, change.value, requestId)
+              const result = await processMessages(supabaseClient, change.value, requestId, {
+                difyApiKey,
+                difyBaseUrl,
+                whatsappToken,
+                phoneNumberId
+              })
               console.log(`📝 [${requestId}] Resultado processamento:`, result)
             } else {
               console.log(`ℹ️ [${requestId}] Change field ignorado: ${change.field}`)
@@ -111,7 +128,7 @@ serve(async (req) => {
   }
 })
 
-async function processMessages(supabase: any, messageData: any, requestId: string) {
+async function processMessages(supabase: any, messageData: any, requestId: string, credentials: any) {
   try {
     console.log(`📊 [${requestId}] Dados recebidos para processamento:`, JSON.stringify(messageData, null, 2))
     
@@ -253,16 +270,38 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
 
       console.log(`✅ [${requestId}] Mensagem do cliente salva com ID:`, savedMessage.id)
 
-      // 4. Chamar Dify para gerar resposta
+      // 4. Verificar credenciais antes de chamar Dify
+      if (!credentials.difyApiKey) {
+        console.error(`❌ [${requestId}] DIFY_API_KEY não configurada! Pulando chamada para Dify.`)
+        
+        // Criar notificação de erro
+        await supabase
+          .from('notifications')
+          .insert({
+            type: 'integration_error',
+            title: 'Erro na Integração Dify',
+            message: 'DIFY_API_KEY não está configurada. Configure nas variáveis de ambiente.',
+            priority: 'high',
+            context: {
+              conversation_id: conversation.id,
+              error: 'missing_dify_api_key'
+            }
+          })
+        
+        continue
+      }
+
+      // 5. Chamar Dify para gerar resposta
       console.log(`🤖 [${requestId}] Chamando Dify para gerar resposta...`)
+      console.log(`🤖 [${requestId}] URL: ${credentials.difyBaseUrl}/v1/chat-messages`)
       
       try {
-        const difyResponse = await callDifyAPI(messageContent, conversation.dify_conversation_id, requestId)
+        const difyResponse = await callDifyAPI(messageContent, conversation.dify_conversation_id, requestId, credentials)
         
         if (difyResponse && difyResponse.answer) {
           console.log(`✅ [${requestId}] Resposta do Dify recebida:`, difyResponse.answer)
           
-          // 5. Salvar resposta do bot
+          // 6. Salvar resposta do bot
           const botMessageData = {
             conversation_id: conversation.id,
             sender_type: 'bot',
@@ -285,7 +324,7 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
             console.log(`✅ [${requestId}] Mensagem do bot salva com ID:`, botMessage.id)
           }
 
-          // 6. Atualizar conversa com dify_conversation_id se necessário
+          // 7. Atualizar conversa com dify_conversation_id se necessário
           if (difyResponse.conversation_id && !conversation.dify_conversation_id) {
             const { error: updateConvError } = await supabase
               .from('conversations')
@@ -316,10 +355,10 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
             }
           }
 
-          // 7. Enviar resposta via WhatsApp
+          // 8. Enviar resposta via WhatsApp
           console.log(`📤 [${requestId}] Enviando resposta via WhatsApp...`)
           
-          const whatsappResult = await sendWhatsAppMessage(clientPhone, difyResponse.answer, requestId)
+          const whatsappResult = await sendWhatsAppMessage(clientPhone, difyResponse.answer, requestId, credentials)
           
           if (whatsappResult.success) {
             console.log(`✅ [${requestId}] Mensagem enviada via WhatsApp com sucesso`)
@@ -343,12 +382,42 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
           }
         } else {
           console.error(`❌ [${requestId}] Resposta inválida do Dify:`, difyResponse)
+          
+          // Criar notificação de erro
+          await supabase
+            .from('notifications')
+            .insert({
+              type: 'bot_error',
+              title: 'Erro no Bot Dify',
+              message: 'O bot não conseguiu gerar uma resposta válida.',
+              priority: 'high',
+              context: {
+                conversation_id: conversation.id,
+                message_content: messageContent,
+                dify_response: difyResponse
+              }
+            })
         }
       } catch (difyError) {
         console.error(`❌ [${requestId}] Erro ao chamar Dify:`, difyError)
+        
+        // Criar notificação de erro crítico
+        await supabase
+          .from('notifications')
+          .insert({
+            type: 'critical_error',
+            title: 'Erro Crítico na Integração Dify',
+            message: `Falha na comunicação com Dify: ${difyError.message}`,
+            priority: 'critical',
+            context: {
+              conversation_id: conversation.id,
+              error: difyError.message,
+              stack: difyError.stack
+            }
+          })
       }
 
-      // 8. Criar notificação
+      // 9. Criar notificação de nova mensagem
       console.log(`🔔 [${requestId}] Criando notificação...`)
       
       const { error: notifError } = await supabase
@@ -383,15 +452,14 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
   }
 }
 
-async function callDifyAPI(message: string, conversationId: string | null, requestId: string) {
+async function callDifyAPI(message: string, conversationId: string | null, requestId: string, credentials: any) {
   try {
-    const difyApiKey = Deno.env.get('DIFY_API_KEY')
-    const difyBaseUrl = Deno.env.get('DIFY_BASE_URL')
+    const { difyApiKey, difyBaseUrl } = credentials
     
-    if (!difyApiKey || !difyBaseUrl) {
-      console.error(`❌ [${requestId}] Credenciais do Dify não configuradas`)
-      return null
-    }
+    console.log(`🤖 [${requestId}] Configurações Dify:`)
+    console.log(`   - Base URL: ${difyBaseUrl}`)
+    console.log(`   - API Key: ${difyApiKey ? `${difyApiKey.substring(0, 10)}...` : 'AUSENTE'}`)
+    console.log(`   - Conversation ID: ${conversationId || 'Nova conversa'}`)
 
     const url = `${difyBaseUrl}/v1/chat-messages`
     
@@ -407,7 +475,7 @@ async function callDifyAPI(message: string, conversationId: string | null, reque
       requestBody.conversation_id = conversationId
     }
 
-    console.log(`🤖 [${requestId}] Chamando Dify API:`, { url, body: requestBody })
+    console.log(`🤖 [${requestId}] Enviando para Dify:`, { url, body: requestBody })
 
     const response = await fetch(url, {
       method: 'POST',
@@ -420,26 +488,38 @@ async function callDifyAPI(message: string, conversationId: string | null, reque
 
     const responseData = await response.json()
     
-    console.log(`🤖 [${requestId}] Resposta do Dify:`, JSON.stringify(responseData, null, 2))
+    console.log(`🤖 [${requestId}] Status da resposta Dify: ${response.status}`)
+    console.log(`🤖 [${requestId}] Headers da resposta:`, Object.fromEntries(response.headers.entries()))
+    console.log(`🤖 [${requestId}] Resposta completa do Dify:`, JSON.stringify(responseData, null, 2))
 
     if (!response.ok) {
-      console.error(`❌ [${requestId}] Erro na API do Dify:`, responseData)
+      console.error(`❌ [${requestId}] Erro HTTP ${response.status} na API do Dify:`, responseData)
       return null
     }
 
+    if (!responseData.answer) {
+      console.error(`❌ [${requestId}] Resposta do Dify sem campo 'answer':`, responseData)
+      return null
+    }
+
+    console.log(`✅ [${requestId}] Resposta válida do Dify recebida`)
     return responseData
   } catch (error) {
-    console.error(`❌ [${requestId}] Erro ao chamar API do Dify:`, error)
+    console.error(`❌ [${requestId}] Erro na requisição para Dify:`, error)
+    console.error(`❌ [${requestId}] Stack trace:`, error.stack)
     return null
   }
 }
 
-async function sendWhatsAppMessage(to: string, message: string, requestId: string) {
+async function sendWhatsAppMessage(to: string, message: string, requestId: string, credentials: any) {
   try {
-    const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')
-    const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN')
+    const { phoneNumberId, whatsappToken } = credentials
     
-    if (!phoneNumberId || !accessToken) {
+    console.log(`📤 [${requestId}] Configurações WhatsApp:`)
+    console.log(`   - Phone Number ID: ${phoneNumberId}`)
+    console.log(`   - Access Token: ${whatsappToken ? `${whatsappToken.substring(0, 20)}...` : 'AUSENTE'}`)
+    
+    if (!phoneNumberId || !whatsappToken) {
       console.error(`❌ [${requestId}] Credenciais do WhatsApp não configuradas`)
       return { success: false, error: 'Credenciais não configuradas' }
     }
@@ -460,7 +540,7 @@ async function sendWhatsAppMessage(to: string, message: string, requestId: strin
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': `Bearer ${whatsappToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(messageData)
@@ -468,9 +548,11 @@ async function sendWhatsAppMessage(to: string, message: string, requestId: strin
 
     const result = await response.json()
     
-    console.log(`📤 [${requestId}] Resposta WhatsApp API:`, JSON.stringify(result, null, 2))
+    console.log(`📤 [${requestId}] Status resposta WhatsApp: ${response.status}`)
+    console.log(`📤 [${requestId}] Resposta completa WhatsApp API:`, JSON.stringify(result, null, 2))
 
     if (response.ok && result.messages && result.messages[0]) {
+      console.log(`✅ [${requestId}] Mensagem enviada com sucesso! ID: ${result.messages[0].id}`)
       return { 
         success: true, 
         message_id: result.messages[0].id 
@@ -484,7 +566,7 @@ async function sendWhatsAppMessage(to: string, message: string, requestId: strin
     }
 
   } catch (error) {
-    console.error(`❌ [${requestId}] Erro ao enviar mensagem WhatsApp:`, error)
+    console.error(`❌ [${requestId}] Erro na requisição WhatsApp:`, error)
     return { 
       success: false, 
       error: error.message 
@@ -492,4 +574,4 @@ async function sendWhatsAppMessage(to: string, message: string, requestId: strin
   }
 }
 
-console.log('🚀 WhatsApp Webhook Function com integração Dify iniciada!')
+console.log('🚀 WhatsApp Webhook Function com integração Dify MELHORADA iniciada!')
