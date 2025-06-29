@@ -47,12 +47,12 @@ serve(async (req) => {
     if (result.success) {
       console.log('✅ Mensagem enviada via WhatsApp:', result.message_id)
       
-      // Salvar mensagem no banco
+      // Salvar mensagem no banco usando 'admin' em vez de 'operator'
       const { data: savedMessage, error: saveError } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversation_id,
-          sender_type: 'operator',
+          sender_type: 'admin',
           sender_name: 'Operador',
           content: message,
           message_type: media ? media.type : 'text',
