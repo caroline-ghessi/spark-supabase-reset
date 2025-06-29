@@ -7,21 +7,14 @@ import { MetricsPanel } from '../metrics/MetricsPanel';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { PlatformHealthCheck } from '../testing/PlatformHealthCheck';
-import { RealConversation } from '@/types/whatsapp';
 
 export const MainLayout: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('conversations');
-  const [selectedConversation, setSelectedConversation] = useState<RealConversation | null>(null);
 
   const renderPage = () => {
     switch (currentPage) {
       case 'conversations':
-        return (
-          <ConversationsDashboard 
-            selectedConversation={selectedConversation}
-            onSelectConversation={setSelectedConversation}
-          />
-        );
+        return <ConversationsDashboard />;
       case 'sellers':
         return <RealSellersPanel />;
       case 'metrics':
@@ -33,12 +26,7 @@ export const MainLayout: React.FC = () => {
       case 'health-check':
         return <PlatformHealthCheck />;
       default:
-        return (
-          <ConversationsDashboard 
-            selectedConversation={selectedConversation}
-            onSelectConversation={setSelectedConversation}
-          />
-        );
+        return <ConversationsDashboard />;
     }
   };
 
