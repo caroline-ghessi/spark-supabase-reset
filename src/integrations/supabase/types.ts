@@ -786,6 +786,15 @@ export type Database = {
         Args: { user_email: string; seller_phone: string }
         Returns: boolean
       }
+      validate_rls_policies: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          table_name: string
+          rls_enabled: boolean
+          policy_count: number
+          status: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
