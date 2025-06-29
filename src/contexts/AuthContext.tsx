@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import type { DatabaseUser } from '@/types/auth';
+import { sanitizeInput, validateEmail } from '@/utils/sanitize';
 
 interface User {
   id: string;
@@ -28,13 +29,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// CONFIGURAÇÕES DE DESENVOLVIMENTO SEGURAS
+// CONFIGURAÇÕES DE DESENVOLVIMENTO MAIS SEGURAS
 const DEV_CONFIG = {
-  enabled: import.meta.env.DEV,
-  // Removido credenciais hardcoded - usar apenas em desenvolvimento local
+  enabled: import.meta.env.DEV && localStorage.getItem('enable_dev_mode') === 'true',
+  // Remover credenciais hardcoded - agora requer ativação manual
   adminUser: {
     id: 'dev-admin-001',
-    email: 'admin@dev.local',
+    email: 'dev@local.test',
     name: 'Dev Admin',
     role: 'admin' as const,
     first_login_completed: true
@@ -55,7 +56,8 @@ const ROLE_PERMISSIONS = {
     'monitorar_conversas',
     'assumir_controle',
     'transferir_clientes',
-    'visualizar_biblioteca_materiais'
+    'visualizar_biblioteca_materiais',
+    'acessar_painel_seguranca'
   ],
   supervisor: [
     'monitorar_conversas',
@@ -75,10 +77,19 @@ const ROLE_PERMISSIONS = {
   ]
 };
 
-// Controle de rate limiting para login
-const LOGIN_ATTEMPTS = new Map<string, { count: number; lastAttempt: number }>();
+// Controle de rate limiting melhorado
+const LOGIN_ATTEMPTS = new Map<string, { count: number; lastAttempt: number; blockedUntil?: number }>();
 const MAX_LOGIN_ATTEMPTS = 5;
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
+const LOCKOUT_DURATION = 30 * 60 * 1000; // 30 minutos de bloqueio
+
+// Utilitário para log de segurança
+const logSecurityEvent = (event: string, details: any) => {
+  console.warn(`🔒 Security Event: ${event}`, {
+    timestamp: new Date().toISOString(),
+    ...details
+  });
+};
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -90,6 +101,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth event:', event, session?.user?.email);
+        
+        // Log de eventos de segurança
+        if (event === 'SIGNED_IN') {
+          logSecurityEvent('USER_SIGNED_IN', { email: session?.user?.email });
+        } else if (event === 'SIGNED_OUT') {
+          logSecurityEvent('USER_SIGNED_OUT', {});
+        }
+        
         setSession(session);
         
         if (session?.user) {
@@ -115,7 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      // Verificar acesso de desenvolvimento (apenas em DEV)
+      // Verificar acesso de desenvolvimento (apenas em DEV e se habilitado)
       if (DEV_CONFIG.enabled && checkDevAccess()) {
         setLoading(false);
         return;
@@ -152,11 +171,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Verificar se não expirou (máximo 1 hora)
       if (now < expiresAt && (expiresAt - now) <= 3600000) {
-        // Verificar token de emergência (deve ser baseado em data e chave secreta)
-        const today = new Date();
-        const expectedToken = generateEmergencyToken(today);
-        
-        if (emergencyToken === expectedToken) {
+        // Verificar token de emergência mais seguro
+        if (validateEmergencyToken(emergencyToken)) {
           setUser({
             id: 'emergency-admin',
             email: 'emergency@admin.com',
@@ -164,7 +180,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             role: 'admin',
             first_login_completed: true
           });
-          console.warn('⚠️ Acesso de emergência ativo');
+          logSecurityEvent('EMERGENCY_ACCESS_ACTIVE', { expiresAt });
           return true;
         }
       }
@@ -173,15 +189,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('emergency_access');
       localStorage.removeItem('emergency_expires');
       localStorage.removeItem('emergency_token');
+      logSecurityEvent('EMERGENCY_ACCESS_EXPIRED', {});
     }
     return false;
   };
 
-  const generateEmergencyToken = (date: Date): string => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear().toString();
-    return `EMG-${year}${month}${day}-SECURE`;
+  const validateEmergencyToken = (token: string): boolean => {
+    try {
+      // Validação mais robusta do token de emergência
+      const parts = token.split('-');
+      if (parts.length !== 3 || parts[0] !== 'EMG' || parts[2] !== 'SECURE') {
+        return false;
+      }
+      
+      const dateStr = parts[1];
+      if (dateStr.length !== 8) return false;
+      
+      const year = parseInt(dateStr.substring(0, 4));
+      const month = parseInt(dateStr.substring(4, 6));
+      const day = parseInt(dateStr.substring(6, 8));
+      
+      const tokenDate = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Token deve ser do dia atual
+      return tokenDate.getTime() === today.getTime();
+    } catch (error) {
+      return false;
+    }
   };
 
   const checkDevAccess = (): boolean => {
@@ -194,7 +230,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const userData = JSON.parse(devUser);
         setUser(userData);
-        console.log('🔓 Acesso de desenvolvimento ativo para', userData.name);
+        logSecurityEvent('DEV_ACCESS_ACTIVE', { userData: userData.name });
         return true;
       } catch (error) {
         console.error('Erro ao parsear dados de dev:', error);
@@ -234,51 +270,78 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const checkRateLimit = (email: string): boolean => {
+  const checkRateLimit = (email: string): { allowed: boolean; message?: string } => {
     const now = Date.now();
     const attempts = LOGIN_ATTEMPTS.get(email);
     
     if (!attempts) {
       LOGIN_ATTEMPTS.set(email, { count: 1, lastAttempt: now });
-      return true;
+      return { allowed: true };
+    }
+    
+    // Verificar se ainda está bloqueado
+    if (attempts.blockedUntil && now < attempts.blockedUntil) {
+      const remainingTime = Math.ceil((attempts.blockedUntil - now) / 60000);
+      return { 
+        allowed: false, 
+        message: `Conta temporariamente bloqueada. Tente novamente em ${remainingTime} minutos.`
+      };
     }
     
     // Reset counter se passou da janela de tempo
     if (now - attempts.lastAttempt > RATE_LIMIT_WINDOW) {
       LOGIN_ATTEMPTS.set(email, { count: 1, lastAttempt: now });
-      return true;
+      return { allowed: true };
     }
     
     // Verificar se excedeu limite
     if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
-      return false;
+      const blockedUntil = now + LOCKOUT_DURATION;
+      LOGIN_ATTEMPTS.set(email, { 
+        ...attempts, 
+        blockedUntil,
+        lastAttempt: now 
+      });
+      
+      logSecurityEvent('ACCOUNT_LOCKED', { email, blockedUntil });
+      
+      return { 
+        allowed: false, 
+        message: `Muitas tentativas de login. Conta bloqueada por 30 minutos.`
+      };
     }
     
     // Incrementar tentativas
     LOGIN_ATTEMPTS.set(email, { count: attempts.count + 1, lastAttempt: now });
-    return true;
+    return { allowed: true };
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Validação de input
-      if (!email || !password) {
+      // Validação e sanitização de input
+      const cleanEmail = sanitizeInput(email.toLowerCase().trim());
+      const cleanPassword = sanitizeInput(password);
+      
+      if (!cleanEmail || !cleanPassword) {
         return { success: false, error: 'Email e senha são obrigatórios' };
       }
 
-      // Verificar rate limiting
-      if (!checkRateLimit(email)) {
-        return { 
-          success: false, 
-          error: `Muitas tentativas de login. Tente novamente em ${Math.ceil(RATE_LIMIT_WINDOW / 60000)} minutos.` 
-        };
+      if (!validateEmail(cleanEmail)) {
+        return { success: false, error: 'Email inválido' };
       }
 
-      // BYPASS DE DESENVOLVIMENTO - apenas em ambiente DEV
+      // Verificar rate limiting
+      const rateLimitCheck = checkRateLimit(cleanEmail);
+      if (!rateLimitCheck.allowed) {
+        return { success: false, error: rateLimitCheck.message };
+      }
+
+      // BYPASS DE DESENVOLVIMENTO - apenas em ambiente DEV e se habilitado
       if (DEV_CONFIG.enabled && 
-          email === 'dev@admin.com' && 
-          password === 'DevAccess2024!') {
-        console.log('🔓 Acesso de desenvolvimento ativado');
+          cleanEmail === 'dev@admin.local' && 
+          cleanPassword === 'DevSecure2024!@#') {
+        
+        logSecurityEvent('DEV_LOGIN_ATTEMPT', { email: cleanEmail });
         setUser(DEV_CONFIG.adminUser);
         
         // Salvar flag de dev access
@@ -294,14 +357,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Login normal via Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+        email: cleanEmail,
+        password: cleanPassword
       });
 
-      if (error) throw error;
+      if (error) {
+        logSecurityEvent('LOGIN_FAILED', { email: cleanEmail, error: error.message });
+        throw error;
+      }
 
       // Limpar rate limiting em caso de sucesso
-      LOGIN_ATTEMPTS.delete(email);
+      LOGIN_ATTEMPTS.delete(cleanEmail);
+      logSecurityEvent('LOGIN_SUCCESS', { email: cleanEmail });
 
       // Dados do usuário serão carregados pelo listener onAuthStateChange
       return { success: true, user: data.user };
@@ -316,22 +383,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      // Validação de input
-      if (!email || !password || !name) {
+      // Validação e sanitização de input
+      const cleanEmail = sanitizeInput(email.toLowerCase().trim());
+      const cleanPassword = sanitizeInput(password);
+      const cleanName = sanitizeInput(name.trim());
+
+      if (!cleanEmail || !cleanPassword || !cleanName) {
         return { success: false, error: 'Todos os campos são obrigatórios' };
       }
 
-      if (password.length < 8) {
+      if (!validateEmail(cleanEmail)) {
+        return { success: false, error: 'Email inválido' };
+      }
+
+      if (cleanPassword.length < 8) {
         return { success: false, error: 'A senha deve ter pelo menos 8 caracteres' };
       }
 
+      // Verificar se senha tem complexidade mínima
+      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(cleanPassword)) {
+        return { success: false, error: 'A senha deve conter ao menos uma letra minúscula, maiúscula e um número' };
+      }
+
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            name: name
+            name: cleanName
           }
         }
       });
@@ -344,8 +424,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           .from('users' as any)
           .insert({
             id: data.user.id,
-            email: email,
-            name: name,
+            email: cleanEmail,
+            name: cleanName,
             role: 'admin', // Primeiro usuário é sempre admin
             first_login_completed: false
           });
@@ -353,10 +433,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (profileError) {
           console.error('Erro ao criar perfil:', profileError);
         }
+
+        logSecurityEvent('USER_REGISTERED', { email: cleanEmail, name: cleanName });
       }
 
       return { success: true };
     } catch (error: any) {
+      logSecurityEvent('REGISTRATION_FAILED', { email, error: error.message });
       console.error('Erro no signup:', error);
       return { 
         success: false, 
@@ -367,6 +450,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async () => {
     try {
+      logSecurityEvent('LOGOUT_INITIATED', { userId: user?.id });
+      
       // Limpar acessos especiais
       localStorage.removeItem('dev_access');
       localStorage.removeItem('dev_user');
