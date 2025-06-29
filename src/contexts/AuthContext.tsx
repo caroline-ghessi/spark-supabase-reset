@@ -195,7 +195,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      const userData = data as DatabaseUser;
+      // Converter de unknown para DatabaseUser de forma segura
+      const userData = data as unknown as DatabaseUser;
       setUser({
         id: userData.id,
         email: userData.email,
