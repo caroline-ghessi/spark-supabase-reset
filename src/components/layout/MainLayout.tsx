@@ -7,6 +7,8 @@ import { MetricsPanel } from '../metrics/MetricsPanel';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { PlatformHealthCheck } from '../testing/PlatformHealthCheck';
+import { ToastContainer } from '../notifications/ToastContainer';
+import { ConnectionStatus } from '../ui/ConnectionStatus';
 
 export const MainLayout: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('conversations');
@@ -39,6 +41,10 @@ export const MainLayout: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         {renderPage()}
       </main>
+      
+      {/* Componentes globais */}
+      <ToastContainer />
+      <ConnectionStatus />
     </div>
   );
 };

@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MoreVertical } from 'lucide-react';
+import { MoreVertical } from 'lucide-react';
 import { RealConversation, RealMessage } from '@/types/whatsapp';
 import { TakeControlButton } from '../ui/TakeControlButton';
 import { TransferToSellerButton } from '../ui/TransferToSellerButton';
 import { MessageBubble } from '../ui/MessageBubble';
 import { MessageInput } from '../ui/MessageInput';
+import { useOptimisticMessages } from '@/hooks/useOptimisticMessages';
 
 interface ChatInterfaceProps {
   conversation: RealConversation;
@@ -22,6 +23,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isManualControl, setIsManualControl] = useState(conversation.status === 'manual');
+  const { optimisticMessages, clearOptimisticMessages } = useOptimisticMessages(conversation.id);
 
   // Sincronizar estado local com mudanças na conversa
   useEffect(() => {
@@ -29,16 +31,34 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setIsManualControl(conversation.status === 'manual');
   }, [conversation.status]);
 
-  // Auto-scroll para última mensagem
+  // Combinar mensagens reais com otimistas
+  const allMessages = React.useMemo(() => {
+    const combined = [...messages, ...optimisticMessages]
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    return combined;
+  }, [messages, optimisticMessages]);
+
+  // Auto-scroll para última mensagem com delay para animação suave
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      });
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [allMessages]);
+
+  // Limpar mensagens otimistas quando conversa muda
+  useEffect(() => {
+    return () => clearOptimisticMessages();
+  }, [conversation.id, clearOptimisticMessages]);
 
   const handleTakeControl = async () => {
     console.log('🎯 Assumindo controle via ChatInterface');
     try {
       await onTakeControl();
-      // O estado será atualizado automaticamente via useEffect quando conversation.status mudar
     } catch (error) {
       console.error('❌ Erro ao assumir controle:', error);
     }
@@ -80,14 +100,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-        {messages.length === 0 ? (
+        {allMessages.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <p className="font-medium">Nenhuma mensagem ainda</p>
             <p className="text-sm">Inicie a conversa ou aguarde mensagens do cliente</p>
           </div>
         ) : (
-          messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+          allMessages.map((message) => (
+            <MessageBubble 
+              key={message.id} 
+              message={message as RealMessage & { isOptimistic?: boolean }}
+            />
           ))
         )}
         <div ref={messagesEndRef} />

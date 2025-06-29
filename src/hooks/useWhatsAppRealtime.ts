@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealConversation, RealMessage } from '@/types/whatsapp';
+import { useNotificationSound } from './useNotificationSound';
 
 interface UseWhatsAppRealtimeProps {
   setConversations: React.Dispatch<React.SetStateAction<RealConversation[]>>;
@@ -18,6 +19,7 @@ export const useWhatsAppRealtime = ({
   onConversationUpdate
 }: UseWhatsAppRealtimeProps) => {
   const { toast } = useToast();
+  const { playSound } = useNotificationSound();
 
   useEffect(() => {
     console.log('🔌 Inicializando real-time subscriptions...');
@@ -33,8 +35,13 @@ export const useWhatsAppRealtime = ({
         
         if (payload.eventType === 'INSERT') {
           const newConversation = payload.new as RealConversation;
-          setConversations(prev => [newConversation, ...prev]);
+          setConversations(prev => {
+            const exists = prev.some(conv => conv.id === newConversation.id);
+            if (exists) return prev;
+            return [newConversation, ...prev];
+          });
           
+          playSound();
           toast({
             title: "Nova Conversa",
             description: `Cliente: ${newConversation.client_name}`,
@@ -50,12 +57,10 @@ export const useWhatsAppRealtime = ({
             )
           );
 
-          // Callback para atualizar conversa selecionada se necessário
           if (onConversationUpdate) {
             onConversationUpdate(updatedConversation);
           }
 
-          // Toast especial para mudança de status
           if (selectedConversation && updatedConversation.id === selectedConversation.id) {
             if (updatedConversation.status === 'manual') {
               toast({
@@ -71,8 +76,6 @@ export const useWhatsAppRealtime = ({
         console.log('📡 Status conversations subscription:', status);
         if (status === 'SUBSCRIBED') {
           console.log('✅ Conversations real-time ativo');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Erro na subscription de conversas');
         }
       });
 
@@ -86,16 +89,24 @@ export const useWhatsAppRealtime = ({
         console.log('💬 Nova mensagem real-time:', payload.new);
         const newMessage = payload.new as RealMessage;
         
-        setMessages(prev => ({
-          ...prev,
-          [newMessage.conversation_id]: [
-            ...(prev[newMessage.conversation_id] || []),
-            newMessage
-          ]
-        }));
+        setMessages(prev => {
+          const conversationMessages = prev[newMessage.conversation_id] || [];
+          const messageExists = conversationMessages.some(msg => msg.id === newMessage.id);
+          
+          if (messageExists) return prev;
+          
+          const updatedMessages = [...conversationMessages, newMessage]
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-        // Toast for new client messages
+          return {
+            ...prev,
+            [newMessage.conversation_id]: updatedMessages
+          };
+        });
+
+        // Som e toast apenas para mensagens de clientes
         if (newMessage.sender_type === 'client') {
+          playSound();
           toast({
             title: "Nova Mensagem",
             description: `${newMessage.sender_name}: ${newMessage.content.substring(0, 50)}...`,
@@ -103,12 +114,24 @@ export const useWhatsAppRealtime = ({
           });
         }
       })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages'
+      }, (payload) => {
+        console.log('🔄 Mensagem atualizada:', payload.new);
+        const updatedMessage = payload.new as RealMessage;
+        
+        setMessages(prev => ({
+          ...prev,
+          [updatedMessage.conversation_id]: (prev[updatedMessage.conversation_id] || [])
+            .map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
+        }));
+      })
       .subscribe((status) => {
         console.log('📡 Status messages subscription:', status);
         if (status === 'SUBSCRIBED') {
           console.log('✅ Messages real-time ativo');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Erro na subscription de mensagens');
         }
       });
 
@@ -122,6 +145,7 @@ export const useWhatsAppRealtime = ({
         console.log('🔔 Nova notificação:', payload.new);
         const notification = payload.new as any;
         
+        playSound();
         toast({
           title: notification.title,
           description: notification.message,
@@ -138,5 +162,5 @@ export const useWhatsAppRealtime = ({
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(notificationsChannel);
     };
-  }, [setConversations, setMessages, toast, selectedConversation, onConversationUpdate]);
+  }, [setConversations, setMessages, toast, selectedConversation, onConversationUpdate, playSound]);
 };
