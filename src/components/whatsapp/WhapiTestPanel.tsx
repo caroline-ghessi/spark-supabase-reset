@@ -298,7 +298,7 @@ export const WhapiTestPanel: React.FC = () => {
             </div>
           </div>
         </CardContent>
-      )}
+      </Card>
     </div>
   );
 };
