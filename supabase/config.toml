@@ -3,3 +3,6 @@ project_id = "hzagithcqoiwybjljgmk"
 
 [functions.whatsapp-webhook]
 verify_jwt = false
+
+[functions.whapi-webhook]
+verify_jwt = false
