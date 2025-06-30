@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -61,11 +62,41 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json()
+    let body
+    try {
+      const text = await req.text()
+      console.log(`📄 [${requestId}] Raw body: ${text}`)
+      
+      if (!text || text.trim() === '') {
+        console.log(`⚠️ [${requestId}] Empty body received`)
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Empty body received - webhook acknowledged',
+          seller: sellerParam 
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      body = JSON.parse(text)
+    } catch (parseError) {
+      console.error(`❌ [${requestId}] JSON Parse Error:`, parseError)
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON format', 
+        details: parseError.message,
+        seller: sellerParam 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     console.log(`📱 [${requestId}] Webhook recebido para seller ${sellerParam}:`, JSON.stringify(body, null, 2))
 
     // Processar dados do Whapi
     if (body.messages && body.messages.length > 0) {
+      console.log(`📨 [${requestId}] Processando ${body.messages.length} mensagens`)
       for (const message of body.messages) {
         await processWhapiMessage(requestId, message, sellerParam)
       }
@@ -75,6 +106,7 @@ serve(async (req) => {
     }
 
     if (body.statuses && body.statuses.length > 0) {
+      console.log(`📊 [${requestId}] Processando ${body.statuses.length} status updates`)
       for (const status of body.statuses) {
         await processWhapiStatus(requestId, status, sellerParam)
       }
@@ -84,13 +116,24 @@ serve(async (req) => {
     }
 
     console.log(`⚠️ [${requestId}] Webhook sem dados reconhecidos para seller: ${sellerParam}`)
-    return new Response(JSON.stringify({ processed: 'none', seller: sellerParam }), {
+    return new Response(JSON.stringify({ 
+      processed: 'none', 
+      seller: sellerParam,
+      message: 'No messages or statuses found in webhook data',
+      received_data: Object.keys(body)
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
-    console.error(`❌ [${requestId}] Erro para seller ${sellerParam}:`, error)
-    return new Response(JSON.stringify({ error: error.message, seller: sellerParam }), { 
+    console.error(`❌ [${requestId}] Erro geral para seller ${sellerParam}:`, error)
+    console.error(`❌ [${requestId}] Stack trace:`, error.stack)
+    return new Response(JSON.stringify({ 
+      error: error.message, 
+      seller: sellerParam,
+      type: error.name,
+      stack: error.stack
+    }), { 
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

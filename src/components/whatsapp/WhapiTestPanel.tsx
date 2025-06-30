@@ -7,10 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { RefreshCw, Send, TestTube } from 'lucide-react';
+import { RefreshCw, Send, TestTube, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const WhapiTestPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
   const [testData, setTestData] = useState({
     seller: 'marcia',
     clientPhone: '5511999999999',
@@ -22,6 +24,7 @@ export const WhapiTestPanel: React.FC = () => {
 
   const simulateWebhook = async () => {
     setLoading(true);
+    setTestResult(null);
     
     try {
       // Simular dados do webhook Whapi
@@ -46,31 +49,61 @@ export const WhapiTestPanel: React.FC = () => {
 
       console.log('🧪 Simulando webhook:', webhookData);
 
-      // Chamar a função webhook
-      const { data, error } = await supabase.functions.invoke('whapi-webhook', {
-        body: webhookData,
+      // Chamar a função webhook diretamente
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whapi-webhook?seller=${testData.seller}`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify(webhookData)
       });
 
-      if (error) {
-        throw error;
+      console.log('📡 Status da resposta:', response.status);
+      console.log('📡 Headers da resposta:', [...response.headers.entries()]);
+
+      const responseText = await response.text();
+      console.log('📄 Resposta raw:', responseText);
+
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        responseData = { raw: responseText, parseError: e.message };
       }
 
-      console.log('✅ Resposta do webhook:', data);
-
-      toast({
-        title: "Teste Enviado",
-        description: "Webhook simulado com sucesso! Verifique os logs e a aba de monitoramento.",
-        className: "bg-green-500 text-white",
+      setTestResult({
+        status: response.status,
+        ok: response.ok,
+        data: responseData,
+        headers: Object.fromEntries(response.headers.entries())
       });
+
+      if (response.ok) {
+        toast({
+          title: "Teste Enviado com Sucesso",
+          description: "Webhook simulado com sucesso! Verifique os logs.",
+          className: "bg-green-500 text-white",
+        });
+      } else {
+        toast({
+          title: "Erro no Teste",
+          description: `Status ${response.status}: ${responseText}`,
+          variant: "destructive",
+        });
+      }
 
     } catch (error) {
       console.error('❌ Erro no teste:', error);
+      setTestResult({
+        error: error.message,
+        type: error.name,
+        stack: error.stack
+      });
+      
       toast({
-        title: "Erro no Teste",
-        description: error instanceof Error ? error.message : "Falha ao simular webhook",
+        title: "Erro de Conexão",
+        description: error instanceof Error ? error.message : "Falha ao conectar com webhook",
         variant: "destructive",
       });
     } finally {
@@ -189,6 +222,58 @@ export const WhapiTestPanel: React.FC = () => {
         </CardContent>
       </Card>
 
+      {testResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              {testResult.ok ? (
+                <div className="w-3 h-3 bg-green-500 rounded-full" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-500" />
+              )}
+              <span>Resultado do Teste</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <strong>Status:</strong> {testResult.status || 'N/A'}
+                </div>
+                <div>
+                  <strong>Sucesso:</strong> {testResult.ok ? '✅ Sim' : '❌ Não'}
+                </div>
+              </div>
+              
+              {testResult.error && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Erro:</strong> {testResult.error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div>
+                <strong>Resposta:</strong>
+                <pre className="mt-2 p-3 bg-gray-100 rounded text-xs overflow-auto max-h-40">
+                  {JSON.stringify(testResult.data, null, 2)}
+                </pre>
+              </div>
+
+              {testResult.headers && (
+                <div>
+                  <strong>Headers:</strong>
+                  <pre className="mt-2 p-3 bg-gray-100 rounded text-xs overflow-auto max-h-32">
+                    {JSON.stringify(testResult.headers, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Status da Integração</CardTitle>
@@ -197,23 +282,23 @@ export const WhapiTestPanel: React.FC = () => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>Função Webhook:</span>
-              <span className="text-green-600">✅ Ativa</span>
+              <span className="text-green-600">✅ Ativa com melhor logging</span>
             </div>
             <div className="flex justify-between">
-              <span>Processamento de Mensagens:</span>
+              <span>CORS:</span>
+              <span className="text-green-600">✅ Configurado</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Tratamento de Erros:</span>
               <span className="text-blue-600">🔄 Melhorado</span>
             </div>
             <div className="flex justify-between">
-              <span>Criação de Conversas:</span>
-              <span className="text-blue-600">🔄 Corrigido</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Logs de Debug:</span>
-              <span className="text-green-600">✅ Habilitados</span>
+              <span>Debug Detalhado:</span>
+              <span className="text-green-600">✅ Habilitado</span>
             </div>
           </div>
         </CardContent>
-      </Card>
+      )}
     </div>
   );
 };
