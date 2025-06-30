@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -7,7 +6,8 @@ import {
   Eye, 
   Settings,
   Menu,
-  X
+  X,
+  Wrench
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,6 +58,13 @@ export const ModernLayout: React.FC<ModernLayoutProps> = ({ children }) => {
       icon: Settings,
       href: '/settings',
       description: 'Configurações da plataforma'
+    },
+    {
+      title: 'Dev Tools',
+      icon: Wrench,
+      href: '/dev-tools',
+      description: 'Ferramentas de desenvolvimento',
+      roles: ['admin', 'developer']
     }
   ];
 
