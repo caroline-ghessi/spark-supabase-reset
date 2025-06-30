@@ -986,6 +986,14 @@ export type Database = {
           closed_at: string
         }[]
       }
+      get_current_user_info: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          user_email: string
+          user_role: string
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1023,6 +1031,14 @@ export type Database = {
       link_user_to_seller: {
         Args: { user_email: string; seller_phone: string }
         Returns: boolean
+      }
+      test_rls_policies: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          test_name: string
+          result: boolean
+          error_message: string
+        }[]
       }
       validate_rls_policies: {
         Args: Record<PropertyKey, never>

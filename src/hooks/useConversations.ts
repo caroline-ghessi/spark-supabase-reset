@@ -14,6 +14,17 @@ export const useConversations = () => {
     setLoading(true);
     
     try {
+      // Primeiro, verificar se o usuário atual tem permissões
+      const { data: userInfo, error: userError } = await supabase
+        .rpc('get_current_user_info');
+
+      if (userError) {
+        console.error('❌ Erro ao verificar usuário:', userError);
+      } else {
+        console.log('👤 Usuário atual:', userInfo);
+      }
+
+      // Tentar carregar conversas usando a função RPC corrigida
       const { data, error } = await supabase
         .rpc('get_conversations');
 
@@ -25,11 +36,22 @@ export const useConversations = () => {
           hint: error.hint,
           code: error.code
         });
-        toast({
-          title: "Erro",
-          description: `Falha ao carregar conversas: ${error.message}`,
-          variant: "destructive",
-        });
+
+        // Se for erro de recursão, sugerir recarregar a página
+        if (error.message?.includes('infinite recursion')) {
+          toast({
+            title: "Erro de Autenticação",
+            description: "Detectado problema de recursão. Tente recarregar a página.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: `Falha ao carregar conversas: ${error.message}`,
+            variant: "destructive",
+          });
+        }
+        
         setConversations([]);
         return;
       }
@@ -43,8 +65,18 @@ export const useConversations = () => {
       })) as RealConversation[];
 
       setConversations(formattedConversations);
+
+      // Toast de sucesso apenas se houver conversas
+      if (formattedConversations.length > 0) {
+        toast({
+          title: "Conversas Carregadas",
+          description: `${formattedConversations.length} conversas encontradas`,
+          className: "bg-green-500 text-white",
+        });
+      }
+
     } catch (error) {
-      console.error('❌ Erro na busca de conversas:', error);
+      console.error('❌ Erro crítico na busca de conversas:', error);
       toast({
         title: "Erro",
         description: "Falha ao carregar conversas - erro de conexão",

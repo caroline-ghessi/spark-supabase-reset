@@ -1,14 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WhatsAppConversationsList } from './WhatsAppConversationsList';
 import { WhatsAppChatInterface } from './WhatsAppChatInterface';
 import { WhatsAppTestPanel } from './WhatsAppTestPanel';
 import { StatsGrid } from '@/components/ui/StatsGrid';
 import { TemperatureBadges } from '@/components/ui/TemperatureBadges';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
+import { testRLSPolicies } from '@/contexts/auth/userOperations';
 import { RealConversation } from '@/types/whatsapp';
-import { MessageSquare, Bot, User, AlertTriangle, TestTube } from 'lucide-react';
+import { MessageSquare, Bot, User, AlertTriangle, TestTube, RefreshCw } from 'lucide-react';
 
 export const WhatsAppDashboard: React.FC = () => {
   const {
@@ -22,6 +25,20 @@ export const WhatsAppDashboard: React.FC = () => {
   } = useWhatsAppIntegration();
 
   const [selectedConversation, setSelectedConversation] = useState<RealConversation | null>(null);
+  const [rlsTestPassed, setRlsTestPassed] = useState<boolean | null>(null);
+  const [testingRLS, setTestingRLS] = useState(false);
+
+  // Testar RLS no carregamento inicial
+  useEffect(() => {
+    const runRLSTest = async () => {
+      setTestingRLS(true);
+      const testResult = await testRLSPolicies();
+      setRlsTestPassed(testResult);
+      setTestingRLS(false);
+    };
+
+    runRLSTest();
+  }, []);
 
   const handleSelectConversation = async (conversation: RealConversation) => {
     setSelectedConversation(conversation);
@@ -36,6 +53,11 @@ export const WhatsAppDashboard: React.FC = () => {
   const handleTakeControl = async () => {
     if (!selectedConversation) return;
     await takeControl(selectedConversation.id);
+  };
+
+  const handleRetryLoad = async () => {
+    console.log('🔄 Tentando recarregar conversas...');
+    await loadConversations();
   };
 
   // Estatísticas das conversas
@@ -96,6 +118,56 @@ export const WhatsAppDashboard: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">WhatsApp Business</h1>
             <p className="text-gray-600">Central de atendimento integrada</p>
           </div>
+
+          {/* Alerta de RLS se necessário */}
+          {rlsTestPassed === false && (
+            <Alert className="mb-4 border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>
+                  <strong>Problema de Autenticação Detectado:</strong> As políticas de segurança não estão funcionando corretamente.
+                </span>
+                <Button 
+                  onClick={() => window.location.reload()} 
+                  size="sm" 
+                  variant="outline"
+                  className="ml-4"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                  Recarregar Página
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Loading de conversas */}
+          {loading && (
+            <Alert className="mb-4 border-blue-200 bg-blue-50">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              <AlertDescription>
+                {testingRLS ? 'Verificando permissões e carregando conversas...' : 'Carregando conversas...'}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Erro se não houver conversas e não estiver carregando */}
+          {!loading && conversations.length === 0 && (
+            <Alert className="mb-4 border-yellow-200 bg-yellow-50">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>Nenhuma conversa encontrada. Isso pode indicar um problema de permissões.</span>
+                <Button 
+                  onClick={handleRetryLoad} 
+                  size="sm" 
+                  variant="outline"
+                  className="ml-4"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                  Tentar Novamente
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Estatísticas */}
           <StatsGrid stats={statsData} />
@@ -160,6 +232,16 @@ export const WhatsAppDashboard: React.FC = () => {
                         <p className="text-gray-600 text-sm sm:text-base">
                           Escolha uma conversa da lista para começar o atendimento
                         </p>
+                        {conversations.length === 0 && !loading && (
+                          <Button 
+                            onClick={handleRetryLoad} 
+                            className="mt-4"
+                            variant="outline"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Recarregar Conversas
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )}
