@@ -112,22 +112,31 @@ export const spinTrainingByCategory = {
     situacao: [
       "Que tipo de obra está realizando?",
       "Qual o cronograma do projeto?",
-      "Quantos m² aproximadamente?"
+      "Quantos m² aproximadamente?",
+      "Quando precisa finalizar a obra?",
+      "Quantas pessoas trabalham no projeto?"
     ],
     problema: [
       "Está conseguindo manter o cronograma?",
       "Os materiais atuais atendem a qualidade esperada?",
-      "Já teve retrabalho por problema em materiais?"
+      "Já teve retrabalho por problema em materiais?",
+      "Tem enfrentado atrasos na entrega de materiais?",
+      "O prazo está apertado para conclusão?"
     ],
     implicacao: [
       "Atrasos geram multa contratual?",
       "Como o cliente reage a atrasos?",
-      "Qual custo de refazer um trabalho?"
+      "Qual custo de refazer um trabalho?",
+      "Isso afeta outros projetos da empresa?",
+      "Perder prazo compromete sua reputação no mercado?"
     ],
     necessidade: [
       "Como seria entregar sempre no prazo?",
       "Que valor tem a garantia de qualidade?",
-      "O que significa ter um fornecedor confiável?"
+      "O que significa ter um fornecedor confiável?",
+      "Seria útil ter entrega garantida em 24h?",
+      "Quanto vale ter materiais que não dão retrabalho?",
+      "O que significaria nunca mais perder prazo por falta de material?"
     ]
   },
   materiais_construcao: {
