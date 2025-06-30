@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -9,9 +8,25 @@ const supabase = createClient(
 
 console.log('🚀 Whapi Webhook Function iniciada!')
 
+// Headers CORS para permitir requisições do frontend
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 serve(async (req) => {
   const requestId = crypto.randomUUID().substring(0, 8)
   console.log(`🌐 [${requestId}] ${req.method} ${req.url}`)
+
+  // Tratar requisições OPTIONS (CORS preflight)
+  if (req.method === 'OPTIONS') {
+    console.log(`✅ [${requestId}] CORS preflight request`)
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    })
+  }
 
   // Extrair seller da URL
   const url = new URL(req.url)
@@ -26,14 +41,23 @@ serve(async (req) => {
 
     if (mode === 'subscribe' && token === Deno.env.get('WHAPI_VERIFY_TOKEN')) {
       console.log(`✅ [${requestId}] Webhook verificado para seller: ${sellerParam}`)
-      return new Response(challenge, { status: 200 })
+      return new Response(challenge, { 
+        status: 200,
+        headers: corsHeaders
+      })
     }
 
-    return new Response('Forbidden', { status: 403 })
+    return new Response('Forbidden', { 
+      status: 403,
+      headers: corsHeaders
+    })
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+    return new Response('Method not allowed', { 
+      status: 405,
+      headers: corsHeaders
+    })
   }
 
   try {
@@ -45,22 +69,31 @@ serve(async (req) => {
       for (const message of body.messages) {
         await processWhapiMessage(requestId, message, sellerParam)
       }
-      return new Response(JSON.stringify({ processed: 'messages', count: body.messages.length, seller: sellerParam }))
+      return new Response(JSON.stringify({ processed: 'messages', count: body.messages.length, seller: sellerParam }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
     if (body.statuses && body.statuses.length > 0) {
       for (const status of body.statuses) {
         await processWhapiStatus(requestId, status, sellerParam)
       }
-      return new Response(JSON.stringify({ processed: 'statuses', count: body.statuses.length, seller: sellerParam }))
+      return new Response(JSON.stringify({ processed: 'statuses', count: body.statuses.length, seller: sellerParam }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
     console.log(`⚠️ [${requestId}] Webhook sem dados reconhecidos para seller: ${sellerParam}`)
-    return new Response(JSON.stringify({ processed: 'none', seller: sellerParam }))
+    return new Response(JSON.stringify({ processed: 'none', seller: sellerParam }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
 
   } catch (error) {
     console.error(`❌ [${requestId}] Erro para seller ${sellerParam}:`, error)
-    return new Response(JSON.stringify({ error: error.message, seller: sellerParam }), { status: 500 })
+    return new Response(JSON.stringify({ error: error.message, seller: sellerParam }), { 
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
   }
 })
 
