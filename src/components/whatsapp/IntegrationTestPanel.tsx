@@ -16,6 +16,7 @@ interface TestResult {
   status: 'pending' | 'success' | 'error';
   message?: string;
   timestamp?: Date;
+  details?: any;
 }
 
 export const IntegrationTestPanel: React.FC = () => {
@@ -40,10 +41,10 @@ export const IntegrationTestPanel: React.FC = () => {
     setTestResults(initialResults);
   };
 
-  const updateTestResult = (sellerName: string, status: 'success' | 'error', message?: string) => {
+  const updateTestResult = (sellerName: string, status: 'success' | 'error', message?: string, details?: any) => {
     setTestResults(prev => prev.map(result => 
       result.seller === sellerName 
-        ? { ...result, status, message, timestamp: new Date() }
+        ? { ...result, status, message, timestamp: new Date(), details }
         : result
     ));
   };
@@ -61,26 +62,55 @@ export const IntegrationTestPanel: React.FC = () => {
 
       if (sellerError || !sellerData) {
         console.log(`❌ Vendedor ${seller.name} não encontrado no banco. Erro:`, sellerError);
-        updateTestResult(seller.name, 'error', 'Vendedor não encontrado no banco de dados');
+        updateTestResult(seller.name, 'error', 'Vendedor não encontrado no banco de dados', {
+          error: sellerError,
+          searchedPhone: seller.phone
+        });
         return;
       }
 
       console.log(`✅ Vendedor ${seller.name} encontrado no banco:`, sellerData);
 
-      if (!sellerData.whapi_token) {
-        updateTestResult(seller.name, 'error', 'Token Whapi não configurado');
+      // Verificar token
+      if (!sellerData.whapi_token || sellerData.whapi_token === 'YOUR_RICARDO_WHAPI_TOKEN_HERE') {
+        updateTestResult(seller.name, 'error', 'Token Whapi não configurado ou é placeholder', {
+          hasToken: !!sellerData.whapi_token,
+          tokenValue: sellerData.whapi_token?.substring(0, 10) + '...',
+          isPlaceholder: sellerData.whapi_token === 'YOUR_RICARDO_WHAPI_TOKEN_HERE'
+        });
         return;
       }
 
+      // Verificar status
       if (sellerData.whapi_status !== 'active') {
-        updateTestResult(seller.name, 'error', `Status Whapi: ${sellerData.whapi_status}`);
+        updateTestResult(seller.name, 'error', `Status Whapi: ${sellerData.whapi_status}`, {
+          currentStatus: sellerData.whapi_status,
+          expectedStatus: 'active'
+        });
         return;
       }
 
-      // Verificar se o webhook está configurado corretamente
+      // Verificar webhook com validação melhorada
       const expectedWebhook = `https://hzagithcqoiwybjljgmk.supabase.co/functions/v1/whapi-webhook?seller=${seller.name.toLowerCase()}`;
-      if (sellerData.whapi_webhook_url !== expectedWebhook) {
-        updateTestResult(seller.name, 'error', `Webhook incorreto: ${sellerData.whapi_webhook_url}`);
+      const actualWebhook = sellerData.whapi_webhook_url;
+      
+      // Normalizar URLs para comparação (remover espaços, converter para lowercase)
+      const normalizedExpected = expectedWebhook.trim().toLowerCase();
+      const normalizedActual = (actualWebhook || '').trim().toLowerCase();
+      
+      console.log(`🔍 Comparando webhooks para ${seller.name}:`);
+      console.log(`Expected: "${normalizedExpected}"`);
+      console.log(`Actual: "${normalizedActual}"`);
+      console.log(`Match: ${normalizedExpected === normalizedActual}`);
+      
+      if (normalizedActual !== normalizedExpected) {
+        updateTestResult(seller.name, 'error', 'Webhook URL incorreta', {
+          expected: expectedWebhook,
+          actual: actualWebhook,
+          normalizedExpected,
+          normalizedActual,
+          difference: `Expected length: ${normalizedExpected.length}, Actual length: ${normalizedActual.length}`
+        });
         return;
       }
 
@@ -95,17 +125,32 @@ export const IntegrationTestPanel: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           console.log(`✅ Health check ${seller.name}:`, data);
-          updateTestResult(seller.name, 'success', `Conectado - Status: ${data.status || 'OK'}`);
+          updateTestResult(seller.name, 'success', `Conectado - Status: ${data.status || 'OK'}`, {
+            healthStatus: data,
+            responseStatus: response.status
+          });
         } else {
-          updateTestResult(seller.name, 'error', `Erro HTTP: ${response.status}`);
+          const errorText = await response.text();
+          updateTestResult(seller.name, 'error', `Erro HTTP: ${response.status}`, {
+            httpStatus: response.status,
+            errorResponse: errorText,
+            headers: Object.fromEntries(response.headers.entries())
+          });
         }
       } catch (error) {
-        updateTestResult(seller.name, 'error', `Erro de conexão: ${error.message}`);
+        updateTestResult(seller.name, 'error', `Erro de conexão: ${error.message}`, {
+          error: error.message,
+          stack: error.stack,
+          type: error.name
+        });
       }
 
     } catch (error) {
       console.error(`❌ Erro no teste do ${seller.name}:`, error);
-      updateTestResult(seller.name, 'error', error.message);
+      updateTestResult(seller.name, 'error', `Erro geral: ${error.message}`, {
+        error: error.message,
+        stack: error.stack
+      });
     }
   };
 
@@ -150,7 +195,6 @@ export const IntegrationTestPanel: React.FC = () => {
     
     for (const result of successfulSellers) {
       try {
-        // Aqui você pode implementar o envio real da mensagem
         console.log(`📤 Enviando mensagem para ${result.seller}: ${testMessage}`);
         // Implementar chamada para Edge Function de envio
       } catch (error) {
@@ -173,6 +217,18 @@ export const IntegrationTestPanel: React.FC = () => {
       case 'error': return 'bg-red-100 text-red-800';
       default: return 'bg-yellow-100 text-yellow-800';
     }
+  };
+
+  const showResultDetails = (result: TestResult) => {
+    if (!result.details) return;
+    
+    console.group(`🔍 Detalhes do teste - ${result.seller}`);
+    console.log('Status:', result.status);
+    console.log('Mensagem:', result.message);
+    console.log('Detalhes completos:', result.details);
+    console.groupEnd();
+    
+    toast.info(`Detalhes do ${result.seller} enviados para o console`);
   };
 
   return (
@@ -236,6 +292,16 @@ export const IntegrationTestPanel: React.FC = () => {
                         {result.message}
                       </span>
                     )}
+                    {result.details && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => showResultDetails(result)}
+                        className="text-xs px-2 py-1"
+                      >
+                        Ver Detalhes
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -280,6 +346,7 @@ export const IntegrationTestPanel: React.FC = () => {
           <strong>Instruções:</strong>
           <ol className="mt-2 ml-4 list-decimal text-sm space-y-1">
             <li>Execute os testes para verificar a conectividade com cada vendedor</li>
+            <li>Use o botão "Ver Detalhes" para investigar erros específicos</li>
             <li>Verifique se todos os webhooks estão configurados corretamente no painel Whapi</li>
             <li>Envie uma mensagem de teste para validar o fluxo completo</li>
             <li>Monitore os logs dos Edge Functions para identificar possíveis problemas</li>
