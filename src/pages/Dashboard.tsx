@@ -50,84 +50,89 @@ export default function Dashboard() {
 
   return (
     <ModernLayout>
-      <div className="p-8 space-y-8">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Visão geral da plataforma de gestão WhatsApp</p>
+      <div className="h-full w-full flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex-shrink-0 p-4 sm:p-6 lg:p-8 bg-gray-50">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Dashboard</h1>
+            <p className="text-gray-600">Visão geral da plataforma de gestão WhatsApp</p>
+          </div>
+
+          <StatsGrid stats={statsData} />
+          <TemperatureBadges data={temperatureData} />
         </div>
 
-        <StatsGrid stats={statsData} />
-
-        <TemperatureBadges data={temperatureData} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="shadow-sm border-gray-100">
-            <CardHeader>
-              <CardTitle className="text-lg">Conversas Recentes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">Cliente João Silva</p>
-                    <p className="text-sm text-gray-600">Interessado em produto X</p>
-                  </div>
-                  <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">🔥 Quente</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">Cliente Maria Santos</p>
-                    <p className="text-sm text-gray-600">Solicitando orçamento</p>
-                  </div>
-                  <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">🟡 Morno</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">Cliente Pedro Costa</p>
-                    <p className="text-sm text-gray-600">Primeira conversa</p>
-                  </div>
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">🔵 Frio</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-gray-100">
-            <CardHeader>
-              <CardTitle className="text-lg">Performance dos Vendedores</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 font-medium">AS</span>
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pt-0">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 h-full">
+            <Card className="shadow-sm border-gray-100 flex flex-col">
+              <CardHeader className="flex-shrink-0">
+                <CardTitle className="text-lg">Conversas Recentes</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 truncate">Cliente João Silva</p>
+                      <p className="text-sm text-gray-600 truncate">Interessado em produto X</p>
                     </div>
-                    <span className="font-medium text-gray-900">Antonio Santos</span>
+                    <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🔥 Quente</span>
                   </div>
-                  <span className="text-green-600 font-bold">9.2</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-medium">MS</span>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 truncate">Cliente Maria Santos</p>
+                      <p className="text-sm text-gray-600 truncate">Solicitando orçamento</p>
                     </div>
-                    <span className="font-medium text-gray-900">Maria Silva</span>
+                    <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🟡 Morno</span>
                   </div>
-                  <span className="text-green-600 font-bold">8.8</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                      <span className="text-orange-600 font-medium">CO</span>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 truncate">Cliente Pedro Costa</p>
+                      <p className="text-sm text-gray-600 truncate">Primeira conversa</p>
                     </div>
-                    <span className="font-medium text-gray-900">Carlos Oliveira</span>
+                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🔵 Frio</span>
                   </div>
-                  <span className="text-yellow-600 font-bold">7.5</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-gray-100 flex flex-col">
+              <CardHeader className="flex-shrink-0">
+                <CardTitle className="text-lg">Performance dos Vendedores</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-green-600 font-medium text-sm">AS</span>
+                      </div>
+                      <span className="font-medium text-gray-900 truncate">Antonio Santos</span>
+                    </div>
+                    <span className="text-green-600 font-bold flex-shrink-0 ml-2">9.2</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-blue-600 font-medium text-sm">MS</span>
+                      </div>
+                      <span className="font-medium text-gray-900 truncate">Maria Silva</span>
+                    </div>
+                    <span className="text-green-600 font-bold flex-shrink-0 ml-2">8.8</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-orange-600 font-medium text-sm">CO</span>
+                      </div>
+                      <span className="font-medium text-gray-900 truncate">Carlos Oliveira</span>
+                    </div>
+                    <span className="text-yellow-600 font-bold flex-shrink-0 ml-2">7.5</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </ModernLayout>

@@ -5,15 +5,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVendorMessages, VendorMessage, VendorConversation } from '@/hooks/useVendorMessages';
 import { 
-  MessageCircle, Search, Filter, Flag, CheckCircle, 
-  AlertCircle, Clock, TrendingUp, User, Bot,
-  Image, FileText, Mic, Video, MapPin, Send,
-  Eye, EyeOff, Star, ThumbsUp, ThumbsDown
+  MessageCircle, Search, Flag, CheckCircle, 
+  AlertCircle, Star, Image, FileText, Mic, Video, MapPin
 } from 'lucide-react';
 
 export const VendorMonitoringPanel: React.FC = () => {
@@ -99,46 +96,50 @@ export const VendorMonitoringPanel: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-6 border-b">
-        <h1 className="text-2xl font-bold mb-4">Monitoramento de Vendedores</h1>
+    <div className="h-full w-full flex flex-col overflow-hidden">
+      {/* Header com Filtros */}
+      <div className="flex-shrink-0 p-4 sm:p-6 border-b bg-white">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4">Monitoramento de Vendedores</h1>
         
         {/* Filtros de Busca */}
-        <div className="flex gap-4 items-center">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="relative flex-1 w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar por cliente ou vendedor..."
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              className="pl-10"
+              className="pl-10 w-full"
             />
           </div>
           
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={filters.flagged_only}
-              onChange={(e) => setFilters(prev => ({ ...prev, flagged_only: e.target.checked }))}
-              className="rounded"
-            />
-            <Flag className="h-4 w-4 text-red-500" />
-            <span className="text-sm">Apenas Sinalizadas</span>
-          </label>
+          <div className="flex flex-wrap gap-4 items-center">
+            <label className="flex items-center gap-2 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={filters.flagged_only}
+                onChange={(e) => setFilters(prev => ({ ...prev, flagged_only: e.target.checked }))}
+                className="rounded"
+              />
+              <Flag className="h-4 w-4 text-red-500" />
+              <span className="text-sm">Apenas Sinalizadas</span>
+            </label>
 
-          <Input
-            type="date"
-            value={filters.date_from}
-            onChange={(e) => setFilters(prev => ({ ...prev, date_from: e.target.value }))}
-            className="w-40"
-          />
+            <Input
+              type="date"
+              value={filters.date_from}
+              onChange={(e) => setFilters(prev => ({ ...prev, date_from: e.target.value }))}
+              className="w-40"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 flex">
+      {/* Área Principal */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Lista de Conversas */}
-        <div className="w-1/3 border-r flex flex-col">
-          <div className="p-4 border-b">
+        <div className="w-full lg:w-1/3 xl:w-1/4 border-r border-gray-200 flex flex-col bg-white">
+          <div className="p-4 border-b flex-shrink-0">
             <h2 className="font-semibold">Conversas Ativas ({filteredConversations.length})</h2>
           </div>
 
@@ -167,30 +168,30 @@ export const VendorMonitoringPanel: React.FC = () => {
         </div>
 
         {/* Visualizador de Mensagens */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0 bg-white">
           {selectedConversation ? (
             <>
               {/* Header da Conversa */}
-              <div className="p-4 border-b bg-white">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">
+              <div className="p-4 border-b bg-white flex-shrink-0">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-lg truncate">
                       {selectedConversation.client_name || selectedConversation.client_phone}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 truncate">
                       Vendedor: {selectedConversation.seller_name}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs">
                         {selectedConversation.lead_temperature}
                       </Badge>
                       {selectedConversation.avg_quality_score && (
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="text-xs">
                           Score: {selectedConversation.avg_quality_score.toFixed(1)}
                         </Badge>
                       )}
                       {selectedConversation.flagged_count > 0 && (
-                        <Badge variant="destructive">
+                        <Badge variant="destructive" className="text-xs">
                           {selectedConversation.flagged_count} flags
                         </Badge>
                       )}
@@ -216,13 +217,13 @@ export const VendorMonitoringPanel: React.FC = () => {
 
               {/* Análise da Conversa */}
               {conversationAnalysis && (
-                <div className="p-4 border-t bg-gray-50">
+                <div className="p-4 border-t bg-gray-50 flex-shrink-0">
                   <ConversationAnalysis analysis={conversationAnalysis} />
                 </div>
               )}
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="flex-1 flex items-center justify-center text-gray-500 p-6">
               <div className="text-center">
                 <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                 <p>Selecione uma conversa para visualizar</p>
@@ -252,11 +253,11 @@ const ConversationCard: React.FC<{
     >
       <CardContent className="p-3">
         <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <h4 className="font-medium text-sm">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-sm truncate">
               {conversation.client_name || conversation.client_phone}
             </h4>
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-gray-600 mt-1 truncate">
               {conversation.seller_name}
             </p>
             <p className="text-xs text-gray-500 mt-1 line-clamp-2">
@@ -264,7 +265,7 @@ const ConversationCard: React.FC<{
             </p>
           </div>
           
-          <div className="text-right ml-2">
+          <div className="text-right ml-2 flex-shrink-0">
             <div className="flex items-center gap-1 mb-1">
               <Badge variant="outline" className="text-xs">
                 {conversation.total_messages}
@@ -338,7 +339,7 @@ const MessageBubble: React.FC<{
       onMouseLeave={() => setShowActions(false)}
     >
       <div className={`
-        max-w-[70%] rounded-lg p-3 relative
+        max-w-[85%] sm:max-w-[70%] rounded-lg p-3 relative
         ${message.is_from_seller 
           ? 'bg-green-100 text-green-900' 
           : 'bg-gray-100 text-gray-900'}
@@ -355,12 +356,12 @@ const MessageBubble: React.FC<{
         )}
 
         {/* Conteúdo */}
-        <p className="text-sm whitespace-pre-wrap">
+        <p className="text-sm whitespace-pre-wrap break-words">
           {message.text_content || message.caption || '[Mídia]'}
         </p>
 
         {/* Metadados */}
-        <div className="flex items-center gap-2 mt-2 text-xs opacity-70">
+        <div className="flex items-center gap-2 mt-2 text-xs opacity-70 flex-wrap">
           <span>{new Date(message.sent_at).toLocaleTimeString()}</span>
           {message.status === 'read' && <CheckCircle className="h-3 w-3" />}
           {message.quality_score && (
@@ -372,7 +373,7 @@ const MessageBubble: React.FC<{
 
         {/* Ações de Moderação */}
         {showActions && canModerate && (
-          <div className="absolute -top-8 right-0 flex gap-1">
+          <div className="absolute -top-8 right-0 flex gap-1 z-10">
             {message.flagged_for_review ? (
               <Button
                 size="sm"
@@ -444,7 +445,7 @@ const ConversationAnalysis: React.FC<{
     <div className="space-y-3">
       <h4 className="font-medium text-sm">Análise da Conversa</h4>
       
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="text-center">
           <div className="text-xl font-bold">{analysis.totalMessages}</div>
           <div className="text-xs text-gray-600">Total Mensagens</div>
@@ -467,23 +468,25 @@ const ConversationAnalysis: React.FC<{
       </div>
       
       {/* Recomendações */}
-      {analysis.questionRatio < 30 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Taxa de perguntas baixa ({analysis.questionRatio.toFixed(1)}%). Vendedor deve usar mais perguntas SPIN.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {analysis.avgQualityScore < 6 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Score de qualidade baixo ({analysis.avgQualityScore.toFixed(1)}). Recomendado treinamento SPIN.
-          </AlertDescription>
-        </Alert>
-      )}
+      <div className="space-y-2">
+        {analysis.questionRatio < 30 && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Taxa de perguntas baixa ({analysis.questionRatio.toFixed(1)}%). Vendedor deve usar mais perguntas SPIN.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {analysis.avgQualityScore < 6 && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Score de qualidade baixo ({analysis.avgQualityScore.toFixed(1)}). Recomendado treinamento SPIN.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
     </div>
   );
 };

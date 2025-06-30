@@ -27,14 +27,14 @@ export const StatCard: React.FC<StatCardProps> = ({
   trend
 }) => {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 border border-gray-100">
+    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 border border-gray-100 min-h-[120px] flex flex-col justify-between">
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-2">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-gray-600 mb-2 truncate">{title}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{value}</p>
           {trend && (
             <p 
-              className={`text-sm mt-1 ${
+              className={`text-sm mt-1 truncate ${
                 trend.isPositive ? 'text-green-600' : 'text-red-600'
               }`}
             >
@@ -43,9 +43,9 @@ export const StatCard: React.FC<StatCardProps> = ({
           )}
         </div>
         <div 
-          className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBgColor}`}
+          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ml-3 ${iconBgColor}`}
         >
-          <Icon className={`w-6 h-6 ${iconColor}`} />
+          <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
         </div>
       </div>
     </div>
@@ -54,7 +54,12 @@ export const StatCard: React.FC<StatCardProps> = ({
 
 export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div 
+      className="grid gap-4 sm:gap-6 mb-6 sm:mb-8 w-full"
+      style={{
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))'
+      }}
+    >
       {stats.map((stat, index) => (
         <StatCard key={index} {...stat} />
       ))}

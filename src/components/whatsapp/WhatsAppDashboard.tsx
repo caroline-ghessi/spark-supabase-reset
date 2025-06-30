@@ -88,83 +88,87 @@ export const WhatsAppDashboard: React.FC = () => {
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="h-full w-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">WhatsApp Business</h1>
-        <p className="text-gray-600">Central de atendimento integrada</p>
+      <div className="flex-shrink-0 p-4 sm:p-6 lg:p-8 bg-gray-50">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">WhatsApp Business</h1>
+          <p className="text-gray-600">Central de atendimento integrada</p>
+        </div>
+
+        {/* Estatísticas */}
+        <StatsGrid stats={statsData} />
+
+        {/* Temperatura dos Leads */}
+        <TemperatureBadges data={temperatureData} />
       </div>
 
-      {/* Estatísticas */}
-      <StatsGrid stats={statsData} />
-
-      {/* Temperatura dos Leads */}
-      <TemperatureBadges data={temperatureData} />
-
       {/* Interface Principal com Abas */}
-      <Tabs defaultValue="chat" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="chat" className="flex items-center space-x-2">
-            <MessageSquare className="w-4 h-4" />
-            <span>Chat</span>
-          </TabsTrigger>
-          <TabsTrigger value="diagnostics" className="flex items-center space-x-2">
-            <TestTube className="w-4 h-4" />
-            <span>Diagnóstico WhatsApp</span>
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="chat">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" style={{ height: '600px' }}>
-            <div className="flex h-full">
-              {/* Lista de Conversas */}
-              <div className="w-96 border-r border-gray-200 flex flex-col">
-                <div className="p-6 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Conversas WhatsApp</h3>
-                  <p className="text-sm text-gray-600">{conversations.length} conversas ativas</p>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <WhatsAppConversationsList
-                    conversations={conversations}
-                    selectedConversationId={selectedConversation?.id}
-                    onSelectConversation={handleSelectConversation}
-                    onRefresh={loadConversations}
-                    loading={loading}
-                  />
-                </div>
-              </div>
-
-              {/* Interface de Chat */}
-              <div className="flex-1 flex flex-col">
-                {selectedConversation ? (
-                  <WhatsAppChatInterface
-                    conversation={selectedConversation}
-                    messages={messages[selectedConversation.id] || []}
-                    onSendMessage={handleSendMessage}
-                    onTakeControl={handleTakeControl}
-                  />
-                ) : (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                      <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        Selecione uma conversa
-                      </h3>
-                      <p className="text-gray-600">
-                        Escolha uma conversa da lista para começar o atendimento
-                      </p>
-                    </div>
+      <div className="flex-1 flex flex-col overflow-hidden p-4 sm:p-6 lg:p-8 pt-0">
+        <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2 mb-6 flex-shrink-0">
+            <TabsTrigger value="chat" className="flex items-center space-x-2">
+              <MessageSquare className="w-4 h-4" />
+              <span>Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="diagnostics" className="flex items-center space-x-2">
+              <TestTube className="w-4 h-4" />
+              <span>Diagnóstico WhatsApp</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex">
+              <div className="flex h-full w-full">
+                {/* Lista de Conversas */}
+                <div className="w-full sm:w-80 lg:w-96 border-r border-gray-200 flex flex-col flex-shrink-0">
+                  <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Conversas WhatsApp</h3>
+                    <p className="text-sm text-gray-600">{conversations.length} conversas ativas</p>
                   </div>
-                )}
+                  <div className="flex-1 overflow-hidden">
+                    <WhatsAppConversationsList
+                      conversations={conversations}
+                      selectedConversationId={selectedConversation?.id}
+                      onSelectConversation={handleSelectConversation}
+                      onRefresh={loadConversations}
+                      loading={loading}
+                    />
+                  </div>
+                </div>
+
+                {/* Interface de Chat */}
+                <div className="flex-1 flex flex-col min-w-0">
+                  {selectedConversation ? (
+                    <WhatsAppChatInterface
+                      conversation={selectedConversation}
+                      messages={messages[selectedConversation.id] || []}
+                      onSendMessage={handleSendMessage}
+                      onTakeControl={handleTakeControl}
+                    />
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center p-6">
+                      <div className="text-center">
+                        <MessageSquare className="w-12 sm:w-16 h-12 sm:h-16 mx-auto mb-4 text-gray-400" />
+                        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                          Selecione uma conversa
+                        </h3>
+                        <p className="text-gray-600 text-sm sm:text-base">
+                          Escolha uma conversa da lista para começar o atendimento
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="diagnostics">
-          <WhatsAppTestPanel />
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+          
+          <TabsContent value="diagnostics" className="flex-1 overflow-hidden">
+            <WhatsAppTestPanel />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
