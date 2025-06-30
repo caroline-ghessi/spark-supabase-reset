@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -89,7 +90,7 @@ export const ModernLayout: React.FC<ModernLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden w-screen">
+    <div className="flex h-screen bg-gray-50 overflow-hidden w-full">
       {/* Desktop Sidebar */}
       <aside 
         className={cn(

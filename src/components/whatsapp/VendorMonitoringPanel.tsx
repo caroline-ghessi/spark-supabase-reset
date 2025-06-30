@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -97,9 +96,9 @@ export const VendorMonitoringPanel: React.FC = () => {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
-      {/* Header com Filtros - Sem background cinza */}
+      {/* Header com Filtros */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200">
-        <div className="px-6 py-4">
+        <div className="p-4">
           <h1 className="text-xl sm:text-2xl font-bold mb-4">Monitoramento de Vendedores</h1>
           
           {/* Filtros de Busca */}
@@ -137,7 +136,7 @@ export const VendorMonitoringPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Área Principal - Full Width & Height */}
+      {/* Área Principal */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Lista de Conversas */}
         <div className="w-full lg:w-1/3 xl:w-1/4 border-r border-gray-200 flex flex-col bg-white">

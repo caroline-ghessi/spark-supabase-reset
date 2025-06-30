@@ -89,9 +89,9 @@ export const WhatsAppDashboard: React.FC = () => {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
-      {/* Header com Stats - Sem padding lateral */}
+      {/* Header com Stats */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200">
-        <div className="px-6 py-4">
+        <div className="p-4">
           <div className="mb-4">
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">WhatsApp Business</h1>
             <p className="text-gray-600">Central de atendimento integrada</p>
@@ -108,7 +108,7 @@ export const WhatsAppDashboard: React.FC = () => {
       {/* Interface Principal com Abas */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-6 pt-4 flex-shrink-0">
+          <div className="p-4 flex-shrink-0">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="chat" className="flex items-center space-x-2">
                 <MessageSquare className="w-4 h-4" />
@@ -121,7 +121,7 @@ export const WhatsAppDashboard: React.FC = () => {
             </TabsList>
           </div>
           
-          <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden mx-6 mb-6">
+          <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden mx-4 mb-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex">
               <div className="flex h-full w-full">
                 {/* Lista de Conversas */}
@@ -168,7 +168,7 @@ export const WhatsAppDashboard: React.FC = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="diagnostics" className="flex-1 overflow-hidden mx-6 mb-6">
+          <TabsContent value="diagnostics" className="flex-1 overflow-hidden mx-4 mb-4">
             <WhatsAppTestPanel />
           </TabsContent>
         </Tabs>

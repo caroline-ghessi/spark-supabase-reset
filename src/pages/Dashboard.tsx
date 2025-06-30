@@ -51,9 +51,9 @@ export default function Dashboard() {
   return (
     <ModernLayout>
       <div className="h-full w-full flex flex-col overflow-hidden">
-        {/* Header com Stats - Sem background cinza */}
+        {/* Header com Stats */}
         <div className="flex-shrink-0 bg-white border-b border-gray-200">
-          <div className="px-6 py-4">
+          <div className="p-4">
             <div className="mb-6">
               <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Dashboard</h1>
               <p className="text-gray-600">Visão geral da plataforma de gestão WhatsApp</p>
@@ -64,8 +64,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Content Area - Full Width & Height */}
-        <div className="flex-1 overflow-hidden px-6 py-6">
+        {/* Content Area */}
+        <div className="flex-1 overflow-hidden p-4">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
             <Card className="shadow-sm border-gray-100 flex flex-col">
               <CardHeader className="flex-shrink-0">
