@@ -13,15 +13,19 @@ serve(async (req) => {
   const requestId = crypto.randomUUID().substring(0, 8)
   console.log(`🌐 [${requestId}] ${req.method} ${req.url}`)
 
+  // Extrair seller da URL
+  const url = new URL(req.url)
+  const sellerParam = url.searchParams.get('seller')
+  console.log(`👤 [${requestId}] Seller param: ${sellerParam}`)
+
   if (req.method === 'GET') {
     // Verificação de webhook (se necessário)
-    const url = new URL(req.url)
     const mode = url.searchParams.get('hub.mode')
     const token = url.searchParams.get('hub.verify_token')
     const challenge = url.searchParams.get('hub.challenge')
 
     if (mode === 'subscribe' && token === Deno.env.get('WHAPI_VERIFY_TOKEN')) {
-      console.log(`✅ [${requestId}] Webhook verificado`)
+      console.log(`✅ [${requestId}] Webhook verificado para seller: ${sellerParam}`)
       return new Response(challenge, { status: 200 })
     }
 
@@ -34,46 +38,74 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
-    console.log(`📱 [${requestId}] Webhook recebido:`, JSON.stringify(body, null, 2))
+    console.log(`📱 [${requestId}] Webhook recebido para seller ${sellerParam}:`, JSON.stringify(body, null, 2))
 
     // Processar dados do Whapi
     if (body.messages && body.messages.length > 0) {
       for (const message of body.messages) {
-        await processWhapiMessage(requestId, message)
+        await processWhapiMessage(requestId, message, sellerParam)
       }
-      return new Response(JSON.stringify({ processed: 'messages', count: body.messages.length }))
+      return new Response(JSON.stringify({ processed: 'messages', count: body.messages.length, seller: sellerParam }))
     }
 
     if (body.statuses && body.statuses.length > 0) {
       for (const status of body.statuses) {
-        await processWhapiStatus(requestId, status)
+        await processWhapiStatus(requestId, status, sellerParam)
       }
-      return new Response(JSON.stringify({ processed: 'statuses', count: body.statuses.length }))
+      return new Response(JSON.stringify({ processed: 'statuses', count: body.statuses.length, seller: sellerParam }))
     }
 
-    console.log(`⚠️ [${requestId}] Webhook sem dados reconhecidos`)
-    return new Response(JSON.stringify({ processed: 'none' }))
+    console.log(`⚠️ [${requestId}] Webhook sem dados reconhecidos para seller: ${sellerParam}`)
+    return new Response(JSON.stringify({ processed: 'none', seller: sellerParam }))
 
   } catch (error) {
-    console.error(`❌ [${requestId}] Erro:`, error)
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+    console.error(`❌ [${requestId}] Erro para seller ${sellerParam}:`, error)
+    return new Response(JSON.stringify({ error: error.message, seller: sellerParam }), { status: 500 })
   }
 })
 
-async function processWhapiMessage(requestId: string, message: any) {
-  console.log(`📨 [${requestId}] Processando mensagem:`, message.id)
+async function processWhapiMessage(requestId: string, message: any, sellerParam?: string) {
+  console.log(`📨 [${requestId}] Processando mensagem para seller ${sellerParam}:`, message.id)
 
   try {
-    // Encontrar vendedor pelo número de telefone
+    // Encontrar vendedor pela combinação de parâmetro URL e número de telefone
     const phoneNumber = message.from_me ? message.to : message.from
-    const { data: seller } = await supabase
-      .from('sellers')
-      .select('*')
-      .eq('whatsapp_number', phoneNumber.replace(/\D/g, ''))
-      .single()
+    const cleanPhone = phoneNumber.replace(/\D/g, '')
+    
+    console.log(`🔍 [${requestId}] Buscando vendedor - Param: ${sellerParam}, Phone: ${cleanPhone}`)
+
+    let seller = null
+    
+    // Buscar primeiro pelo parâmetro seller (se fornecido) e validar com número
+    if (sellerParam) {
+      const { data: sellerByParam } = await supabase
+        .from('sellers')
+        .select('*')
+        .ilike('name', `%${sellerParam}%`)
+        .single()
+
+      if (sellerByParam && sellerByParam.whatsapp_number === cleanPhone) {
+        seller = sellerByParam
+        console.log(`✅ [${requestId}] Vendedor encontrado por parâmetro e validado: ${seller.name}`)
+      }
+    }
+    
+    // Se não encontrou pelo parâmetro, buscar só pelo número
+    if (!seller) {
+      const { data: sellerByPhone } = await supabase
+        .from('sellers')
+        .select('*')
+        .eq('whatsapp_number', cleanPhone)
+        .single()
+
+      if (sellerByPhone) {
+        seller = sellerByPhone
+        console.log(`✅ [${requestId}] Vendedor encontrado por número: ${seller.name}`)
+      }
+    }
 
     if (!seller) {
-      console.log(`⚠️ [${requestId}] Vendedor não encontrado para número: ${phoneNumber}`)
+      console.log(`⚠️ [${requestId}] Vendedor não encontrado - Param: ${sellerParam}, Phone: ${cleanPhone}`)
       return
     }
 
@@ -145,21 +177,22 @@ async function processWhapiMessage(requestId: string, message: any) {
           context: {
             conversation_id: conversationId,
             seller_id: seller.id,
-            message_id: savedMessage.id
+            message_id: savedMessage.id,
+            seller_name: seller.name
           },
           priority: 'normal'
         })
     }
 
-    console.log(`✅ [${requestId}] Mensagem processada: ${savedMessage.id}`)
+    console.log(`✅ [${requestId}] Mensagem processada para ${seller.name}: ${savedMessage.id}`)
 
   } catch (error) {
     console.error(`❌ [${requestId}] Erro ao processar mensagem:`, error)
   }
 }
 
-async function processWhapiStatus(requestId: string, status: any) {
-  console.log(`📱 [${requestId}] Processando status:`, status.id, status.status)
+async function processWhapiStatus(requestId: string, status: any, sellerParam?: string) {
+  console.log(`📱 [${requestId}] Processando status para seller ${sellerParam}:`, status.id, status.status)
 
   try {
     const updateData: any = {}
@@ -178,7 +211,7 @@ async function processWhapiStatus(requestId: string, status: any) {
         .update(updateData)
         .eq('whapi_message_id', status.id)
 
-      console.log(`✅ [${requestId}] Status atualizado para mensagem ${status.id}`)
+      console.log(`✅ [${requestId}] Status atualizado para mensagem ${status.id} (seller: ${sellerParam})`)
     }
 
   } catch (error) {
