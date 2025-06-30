@@ -60,22 +60,30 @@ export const spinTrainingByCategory = {
     situacao: [
       "Que tipo de trabalhos vocês realizam?",
       "Quantos profissionais usam ferramentas na empresa?",
-      "Com que frequência precisam de ferramentas novas?"
+      "Com que frequência precisam de ferramentas novas?",
+      "Qual o orçamento mensal destinado para ferramentas?",
+      "Que ferramentas vocês mais utilizam no dia a dia?"
     ],
     problema: [
       "As ferramentas atuais atendem todas as necessidades?",
       "Já tiveram problemas com quebra ou mau funcionamento?",
-      "A produtividade está onde vocês gostariam?"
+      "A produtividade está onde vocês gostariam?",
+      "Têm dificuldade para encontrar peças de reposição?",
+      "Os custos de manutenção estão altos?"
     ],
     implicacao: [
       "Quanto tempo perdem quando uma ferramenta quebra?",
       "Isso afeta os prazos de entrega dos trabalhos?",
-      "Qual o custo de ter profissionais parados?"
+      "Qual o custo de ter profissionais parados?",
+      "Como isso impacta a qualidade do trabalho final?",
+      "Vocês perdem clientes por atrasos relacionados a ferramentas?"
     ],
     necessidade: [
       "Como seria ter ferramentas mais confiáveis?",
       "Quanto vale aumentar a produtividade da equipe?",
-      "Que impacto teria ferramentas profissionais no seu negócio?"
+      "Que impacto teria ferramentas profissionais no seu negócio?",
+      "Seria útil ter garantia estendida nas ferramentas?",
+      "O que significaria reduzir o tempo de manutenção?"
     ]
   },
   energia: {
