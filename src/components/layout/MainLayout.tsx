@@ -1,53 +1,80 @@
 
-import React, { useState } from 'react';
-import { Sidebar } from './Sidebar';
-import { ConversationsDashboard } from '../conversations/ConversationsDashboard';
-import { RealSellersPanel } from '../sellers/RealSellersPanel';
-import { MetricsPanel } from '../metrics/MetricsPanel';
-import { NotificationCenter } from '../notifications/NotificationCenter';
-import { SettingsPanel } from '../settings/SettingsPanel';
-import { PlatformHealthCheck } from '../testing/PlatformHealthCheck';
-import { ToastContainer } from '../notifications/ToastContainer';
-import { ConnectionStatus } from '../ui/ConnectionStatus';
-import { NotificationProvider } from '@/contexts/NotificationContext';
+import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { NavigableSidebar } from './NavigableSidebar';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 
-export const MainLayout: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState('conversations');
+interface MainLayoutProps {
+  children: React.ReactNode;
+}
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'conversations':
-        return <ConversationsDashboard />;
-      case 'sellers':
-        return <RealSellersPanel />;
-      case 'metrics':
-        return <MetricsPanel />;
-      case 'notifications':
-        return <NotificationCenter />;
-      case 'settings':
-        return <SettingsPanel />;
-      case 'health-check':
-        return <PlatformHealthCheck />;
-      default:
-        return <ConversationsDashboard />;
+export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
+  const sidebarItems = [
+    {
+      title: 'Dashboard',
+      icon: 'BarChart3',
+      href: '/',
+      description: 'Visão geral da plataforma'
+    },
+    {
+      title: 'WhatsApp',
+      icon: 'MessageCircle',
+      href: '/whatsapp',
+      description: 'Gestão de conversas WhatsApp'
+    },
+    {
+      title: 'Monitoramento',
+      icon: 'Eye',
+      href: '/monitoring',
+      description: 'Monitoramento dos vendedores',
+      roles: ['admin', 'supervisor']
+    },
+    {
+      title: 'Configurações',
+      icon: 'Settings',
+      href: '/settings',
+      description: 'Configurações da plataforma'
     }
-  };
+  ];
+
+  // Filter items based on user role
+  const filteredItems = sidebarItems.filter(item => {
+    if (!item.roles) return true;
+    return item.roles.includes(user.role);
+  });
 
   return (
-    <NotificationProvider>
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar 
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {renderPage()}
-        </main>
+    <div className="flex h-screen bg-gray-50">
+      <NavigableSidebar items={filteredItems} />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="bg-white border-b px-6 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-800">
+              Plataforma de Gestão WhatsApp
+            </h1>
+            <p className="text-sm text-gray-600">
+              Bem-vindo, {user.name}
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <ConnectionStatus />
+            <NotificationCenter />
+          </div>
+        </header>
         
-        {/* Componentes globais */}
-        <ToastContainer />
-        <ConnectionStatus />
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
       </div>
-    </NotificationProvider>
+    </div>
   );
 };

@@ -110,6 +110,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ai_recommendations_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversations_full"
+            referencedColumns: ["conversation_id"]
+          },
+          {
             foreignKeyName: "ai_recommendations_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
@@ -368,6 +375,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "escalations_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversations_full"
+            referencedColumns: ["conversation_id"]
+          },
+          {
             foreignKeyName: "escalations_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
@@ -502,6 +516,13 @@ export type Database = {
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversations_full"
+            referencedColumns: ["conversation_id"]
+          },
         ]
       }
       notifications: {
@@ -604,6 +625,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quality_scores_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversations_full"
+            referencedColumns: ["conversation_id"]
+          },
+          {
             foreignKeyName: "quality_scores_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
@@ -629,7 +657,10 @@ export type Database = {
           status: string | null
           updated_at: string | null
           whapi_instance_id: string | null
+          whapi_last_sync: string | null
+          whapi_status: string | null
           whapi_token: string | null
+          whapi_webhook_url: string | null
           whatsapp_number: string
           work_schedule: Json | null
         }
@@ -649,7 +680,10 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           whapi_instance_id?: string | null
+          whapi_last_sync?: string | null
+          whapi_status?: string | null
           whapi_token?: string | null
+          whapi_webhook_url?: string | null
           whatsapp_number: string
           work_schedule?: Json | null
         }
@@ -669,7 +703,10 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           whapi_instance_id?: string | null
+          whapi_last_sync?: string | null
+          whapi_status?: string | null
           whapi_token?: string | null
+          whapi_webhook_url?: string | null
           whatsapp_number?: string
           work_schedule?: Json | null
         }
@@ -716,11 +753,212 @@ export type Database = {
           },
         ]
       }
+      vendor_whatsapp_messages: {
+        Row: {
+          caption: string | null
+          client_phone: string
+          conversation_id: string | null
+          created_at: string | null
+          delivered_at: string | null
+          flagged_for_review: boolean | null
+          forwarded: boolean | null
+          from_number: string
+          id: string
+          is_from_seller: boolean
+          media_duration: number | null
+          media_mime_type: string | null
+          media_size: number | null
+          media_url: string | null
+          message_type: string
+          quality_score: number | null
+          quoted_message_id: string | null
+          read_at: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          seller_id: string
+          sent_at: string
+          spin_analysis: Json | null
+          status: string | null
+          text_content: string | null
+          thumbnail_url: string | null
+          to_number: string
+          updated_at: string | null
+          whapi_message_id: string
+          whatsapp_context: Json | null
+        }
+        Insert: {
+          caption?: string | null
+          client_phone: string
+          conversation_id?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          flagged_for_review?: boolean | null
+          forwarded?: boolean | null
+          from_number: string
+          id?: string
+          is_from_seller?: boolean
+          media_duration?: number | null
+          media_mime_type?: string | null
+          media_size?: number | null
+          media_url?: string | null
+          message_type?: string
+          quality_score?: number | null
+          quoted_message_id?: string | null
+          read_at?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          seller_id: string
+          sent_at: string
+          spin_analysis?: Json | null
+          status?: string | null
+          text_content?: string | null
+          thumbnail_url?: string | null
+          to_number: string
+          updated_at?: string | null
+          whapi_message_id: string
+          whatsapp_context?: Json | null
+        }
+        Update: {
+          caption?: string | null
+          client_phone?: string
+          conversation_id?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          flagged_for_review?: boolean | null
+          forwarded?: boolean | null
+          from_number?: string
+          id?: string
+          is_from_seller?: boolean
+          media_duration?: number | null
+          media_mime_type?: string | null
+          media_size?: number | null
+          media_url?: string | null
+          message_type?: string
+          quality_score?: number | null
+          quoted_message_id?: string | null
+          read_at?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          seller_id?: string
+          sent_at?: string
+          spin_analysis?: Json | null
+          status?: string | null
+          text_content?: string | null
+          thumbnail_url?: string | null
+          to_number?: string
+          updated_at?: string | null
+          whapi_message_id?: string
+          whatsapp_context?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversations_full"
+            referencedColumns: ["conversation_id"]
+          },
+          {
+            foreignKeyName: "vendor_whatsapp_messages_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_whatsapp_messages_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whapi_sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_details: Json | null
+          id: string
+          message_count: number | null
+          seller_id: string
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_details?: Json | null
+          id?: string
+          message_count?: number | null
+          seller_id: string
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_details?: Json | null
+          id?: string
+          message_count?: number | null
+          seller_id?: string
+          started_at?: string
+          status?: string
+          sync_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whapi_sync_logs_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      vendor_conversations_full: {
+        Row: {
+          avg_quality_score: number | null
+          client_messages: number | null
+          client_name: string | null
+          client_phone: string | null
+          conversation_id: string | null
+          conversation_status: string | null
+          created_at: string | null
+          first_message_at: string | null
+          flagged_count: number | null
+          last_message_at: string | null
+          last_message_text: string | null
+          lead_temperature: string | null
+          seller_id: string | null
+          seller_messages: number | null
+          seller_name: string | null
+          total_messages: number | null
+          updated_at: string | null
+          whapi_status: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      calculate_spin_score: {
+        Args: { message_text: string }
+        Returns: Json
+      }
       create_admin_user: {
         Args: { admin_id: string; admin_email: string; admin_name: string }
         Returns: boolean

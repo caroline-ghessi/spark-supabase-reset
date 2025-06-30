@@ -1,76 +1,100 @@
-
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/toaster';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { UserProvider } from '@/components/users/AuthenticatedUserContext';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
-
-// Páginas de autenticação
-import { Login } from '@/pages/Login';
-import { EmergencyAccess } from '@/pages/EmergencyAccess';
-import { SetupFirstUser } from '@/pages/SetupFirstUser';
-
-// Páginas principais existentes
-import Index from '@/pages/Index';
-import HealthCheck from '@/pages/HealthCheck';
-import NotFound from '@/pages/NotFound';
-
+import { Toaster } from '@/components/ui/toaster';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 1,
-    },
-  },
-});
+import Dashboard from '@/pages/Dashboard';
+import WhatsApp from '@/pages/WhatsApp';
+import Settings from '@/pages/Settings';
+import Login from '@/pages/Login';
+import SignUp from '@/pages/SignUp';
+import EmergencyAccess from '@/pages/EmergencyAccess';
+import FirstLogin from '@/pages/FirstLogin';
+import DevTools from '@/pages/DevTools';
+import NotFound from '@/pages/NotFound';
+import VendorMonitoring from '@/pages/VendorMonitoring';
+
+const queryClient = new QueryClient();
+
+// Componente para proteger rotas que exigem autenticação
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Carregando...</div>; // Pode ser substituído por um spinner
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return <>{children}</>;
+};
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <UserProvider>
-            <NotificationProvider>
-              <Routes>
-                {/* Rotas Públicas - SEMPRE ACESSÍVEIS */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/emergency-access-2024" element={<EmergencyAccess />} />
-                <Route path="/setup-first-user" element={<SetupFirstUser />} />
-                <Route path="/health" element={<HealthCheck />} />
-                
-                {/* Rotas Protegidas */}
-                <Route 
-                  path="/" 
-                  element={
-                    <ProtectedRoute>
-                      <Index />
-                    </ProtectedRoute>
-                  } 
-                />
-                
-                <Route 
-                  path="/*" 
-                  element={
-                    <ProtectedRoute>
-                      <Index />
-                    </ProtectedRoute>
-                  } 
-                />
-                
-                {/* 404 para rotas inexistentes */}
-                <Route path="/404" element={<NotFound />} />
-                <Route path="*" element={<Navigate to="/404" replace />} />
-              </Routes>
-              <Toaster />
-            </NotificationProvider>
-          </UserProvider>
+          <NotificationProvider>
+            <Toaster />
+            <ToastContainer />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/emergency-access" element={<EmergencyAccess />} />
+              <Route path="/first-login" element={<FirstLogin />} />
+              <Route 
+                path="/" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/whatsapp" 
+                element={
+                  <ProtectedRoute>
+                    <WhatsApp />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/settings" 
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dev-tools" 
+                element={
+                  <ProtectedRoute>
+                    <DevTools />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/monitoring" 
+                element={
+                  <ProtectedRoute>
+                    <VendorMonitoring />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </NotificationProvider>
         </AuthProvider>
-      </Router>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   );
 }
 
