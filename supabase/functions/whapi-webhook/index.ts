@@ -68,8 +68,35 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
   console.log(`📨 [${requestId}] Processando mensagem para seller ${sellerParam}:`, message.id)
 
   try {
-    // Encontrar vendedor pela combinação de parâmetro URL e número de telefone
-    const phoneNumber = message.from_me ? message.to : message.from
+    // Validar dados básicos da mensagem
+    if (!message.id) {
+      console.error(`❌ [${requestId}] Mensagem sem ID`)
+      return
+    }
+
+    // Determinar números de telefone de forma segura
+    let phoneNumber = ''
+    let toNumber = ''
+    let fromNumber = ''
+
+    if (message.from_me) {
+      // Mensagem enviada pelo vendedor
+      fromNumber = message.from || ''
+      toNumber = message.to || ''
+      phoneNumber = toNumber
+    } else {
+      // Mensagem recebida do cliente
+      fromNumber = message.from || ''
+      toNumber = message.to || ''
+      phoneNumber = fromNumber
+    }
+
+    // Validar se temos números válidos
+    if (!phoneNumber || !fromNumber || !toNumber) {
+      console.error(`❌ [${requestId}] Números de telefone inválidos - From: ${fromNumber}, To: ${toNumber}`)
+      return
+    }
+
     const cleanPhone = phoneNumber.replace(/\D/g, '')
     
     console.log(`🔍 [${requestId}] Buscando vendedor - Param: ${sellerParam}, Phone: ${cleanPhone}`)
@@ -109,27 +136,31 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
       return
     }
 
+    // Determinar cliente phone de forma segura
+    const clientPhone = message.from_me ? toNumber : fromNumber
+    const cleanClientPhone = clientPhone.replace(/\D/g, '')
+
     // Buscar ou criar conversa
     const conversationId = await findOrCreateConversation(requestId, {
       sellerId: seller.id,
-      clientPhone: message.from_me ? message.to : message.from,
-      clientName: message.contact?.name || null,
+      clientPhone: cleanClientPhone,
+      clientName: message.contact?.name || message.from_name || null,
       message
     })
 
-    // Preparar dados da mensagem
+    // Preparar dados da mensagem com validações
     const messageData = {
       whapi_message_id: message.id,
       seller_id: seller.id,
       conversation_id: conversationId,
-      from_number: message.from || '',
-      to_number: message.to || '',
+      from_number: fromNumber,
+      to_number: toNumber,
       is_from_seller: message.from_me || false,
-      client_phone: message.from_me ? message.to : message.from,
+      client_phone: cleanClientPhone,
       message_type: message.type || 'text',
-      text_content: message.body || message.text || null,
+      text_content: message.body || message.text || message.caption || null,
       caption: message.caption || null,
-      sent_at: new Date(message.timestamp * 1000).toISOString(),
+      sent_at: new Date((message.timestamp || Date.now() / 1000) * 1000).toISOString(),
       status: 'received',
       forwarded: message.forwarded || false,
       quoted_message_id: message.quoted?.id || null,
@@ -137,12 +168,25 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
     }
 
     // Processar mídia se houver
-    if (message.type && ['image', 'video', 'audio', 'document', 'sticker'].includes(message.type)) {
-      if (message.media_url) messageData.media_url = message.media_url
-      if (message.mime_type) messageData.media_mime_type = message.mime_type
-      if (message.file_size) messageData.media_size = message.file_size
-      if (message.duration) messageData.media_duration = message.duration
-      if (message.preview) messageData.thumbnail_url = message.preview
+    if (message.type && ['image', 'video', 'audio', 'document', 'sticker', 'voice'].includes(message.type)) {
+      // Para mensagens de voz
+      if (message.voice) {
+        messageData.media_url = message.voice.link || null
+        messageData.media_mime_type = message.voice.mime_type || null
+        messageData.media_size = message.voice.file_size || null
+        messageData.media_duration = message.voice.seconds || null
+      }
+      // Para outros tipos de mídia
+      else if (message.media_url || message.link) {
+        messageData.media_url = message.media_url || message.link || null
+        messageData.media_mime_type = message.mime_type || null
+        messageData.media_size = message.file_size || null
+        messageData.media_duration = message.duration || null
+      }
+      
+      if (message.preview) {
+        messageData.thumbnail_url = message.preview
+      }
     }
 
     // Salvar mensagem
@@ -173,7 +217,7 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
         .insert({
           type: 'new_vendor_message',
           title: 'Nova mensagem do cliente',
-          message: `${message.contact?.name || message.from}: ${messageData.text_content?.substring(0, 100) || '[Mídia]'}`,
+          message: `${message.contact?.name || message.from_name || cleanClientPhone}: ${messageData.text_content?.substring(0, 100) || '[Mídia]'}`,
           context: {
             conversation_id: conversationId,
             seller_id: seller.id,
@@ -195,23 +239,36 @@ async function processWhapiStatus(requestId: string, status: any, sellerParam?: 
   console.log(`📱 [${requestId}] Processando status para seller ${sellerParam}:`, status.id, status.status)
 
   try {
+    if (!status.id || !status.status) {
+      console.error(`❌ [${requestId}] Status sem ID ou status válido`)
+      return
+    }
+
     const updateData: any = {}
     
     if (status.status === 'delivered') {
-      updateData.delivered_at = new Date(status.timestamp * 1000).toISOString()
+      updateData.delivered_at = new Date((status.timestamp || Date.now() / 1000) * 1000).toISOString()
       updateData.status = 'delivered'
     } else if (status.status === 'read') {
-      updateData.read_at = new Date(status.timestamp * 1000).toISOString()
+      updateData.read_at = new Date((status.timestamp || Date.now() / 1000) * 1000).toISOString()
+      updateData.status = 'read'
+    } else if (status.status === 'played') {
+      // Para mensagens de áudio que foram reproduzidas
+      updateData.read_at = new Date((status.timestamp || Date.now() / 1000) * 1000).toISOString()
       updateData.status = 'read'
     }
 
     if (Object.keys(updateData).length > 0) {
-      await supabase
+      const { error } = await supabase
         .from('vendor_whatsapp_messages')
         .update(updateData)
         .eq('whapi_message_id', status.id)
 
-      console.log(`✅ [${requestId}] Status atualizado para mensagem ${status.id} (seller: ${sellerParam})`)
+      if (error) {
+        console.error(`❌ [${requestId}] Erro ao atualizar status:`, error)
+      } else {
+        console.log(`✅ [${requestId}] Status atualizado para mensagem ${status.id} (seller: ${sellerParam})`)
+      }
     }
 
   } catch (error) {
@@ -220,8 +277,12 @@ async function processWhapiStatus(requestId: string, status: any, sellerParam?: 
 }
 
 async function findOrCreateConversation(requestId: string, data: any) {
-  const clientPhone = data.clientPhone.replace(/\D/g, '')
+  const clientPhone = data.clientPhone
   
+  if (!clientPhone) {
+    throw new Error('Client phone is required')
+  }
+
   // Buscar conversa existente
   const { data: existing } = await supabase
     .from('conversations')
