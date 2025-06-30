@@ -21,6 +21,8 @@ export interface RealSeller {
     specialty_focus?: string;
     role?: string;
     whapi_integrated?: boolean;
+    sales_type?: string;
+    territory?: string;
   };
   created_at?: string;
   updated_at?: string;
@@ -118,6 +120,28 @@ export const spinTrainingByCategory = {
       "Como seria entregar sempre no prazo?",
       "Que valor tem a garantia de qualidade?",
       "O que significa ter um fornecedor confiável?"
+    ]
+  },
+  materiais_construcao: {
+    situacao: [
+      "Que tipos de materiais vocês mais utilizam?",
+      "Qual o volume médio de compras por mês?",
+      "Trabalham com quantas obras simultaneamente?"
+    ],
+    problema: [
+      "Já tiveram problemas com qualidade de materiais?",
+      "A entrega tem sido dentro do prazo combinado?",
+      "Os preços têm afetado a margem dos projetos?"
+    ],
+    implicacao: [
+      "Material com defeito já causou retrabalho?",
+      "Atraso na entrega impacta o cronograma da obra?",
+      "Como isso afeta a relação com seus clientes?"
+    ],
+    necessidade: [
+      "Seria importante ter garantia total dos materiais?",
+      "Que valor tem um fornecedor sempre pontual?",
+      "Como seria ter preços competitivos garantidos?"
     ]
   }
 };
