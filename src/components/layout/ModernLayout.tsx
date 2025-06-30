@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -90,19 +89,19 @@ export const ModernLayout: React.FC<ModernLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden w-full">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-gray-50 overflow-hidden w-screen">
+      {/* Desktop Sidebar */}
       <aside 
         className={cn(
-          "bg-slate-900 text-slate-100 flex flex-col transition-all duration-300 relative flex-shrink-0",
-          sidebarCollapsed ? "w-16" : "w-64",
+          "bg-slate-900 text-slate-100 flex flex-col transition-all duration-300 relative flex-shrink-0 h-full",
+          sidebarCollapsed ? "w-14" : "w-64",
           "hidden md:flex"
         )}
       >
         {/* Sidebar Header */}
         <div className={cn(
           "border-b border-slate-700 flex items-center justify-between transition-all duration-300",
-          sidebarCollapsed ? "p-4" : "p-6"
+          sidebarCollapsed ? "p-3" : "p-4"
         )}>
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -159,7 +158,7 @@ export const ModernLayout: React.FC<ModernLayoutProps> = ({ children }) => {
 
         {/* Status Footer */}
         {!sidebarCollapsed && (
-          <div className="p-4 border-t border-slate-700">
+          <div className="p-3 border-t border-slate-700">
             <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -186,7 +185,7 @@ export const ModernLayout: React.FC<ModernLayoutProps> = ({ children }) => {
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           {/* Mobile Header */}
-          <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-700 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
                 <MessageCircle className="w-5 h-5 text-white" />
@@ -236,11 +235,9 @@ export const ModernLayout: React.FC<ModernLayoutProps> = ({ children }) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 flex justify-between items-center flex-shrink-0" style={{ 
-          padding: 'clamp(12px, 2vw, 24px) clamp(16px, 3vw, 32px)' 
-        }}>
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 h-full">
+        {/* Header - Full Width */}
+        <header className="bg-white border-b border-gray-200 flex justify-between items-center flex-shrink-0 px-4 py-3">
           <div className="flex items-center space-x-4 min-w-0">
             <button
               onClick={toggleSidebar}
@@ -282,11 +279,9 @@ export const ModernLayout: React.FC<ModernLayoutProps> = ({ children }) => {
           </div>
         </header>
         
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto w-full">
-          <div className="h-full w-full">
-            {children}
-          </div>
+        {/* Content Area - Full Width & Height */}
+        <main className="flex-1 overflow-hidden w-full h-full">
+          {children}
         </main>
       </div>
     </div>

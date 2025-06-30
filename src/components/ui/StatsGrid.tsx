@@ -54,12 +54,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
 export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
   return (
-    <div 
-      className="grid gap-4 sm:gap-6 mb-6 sm:mb-8 w-full"
-      style={{
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))'
-      }}
-    >
+    <div className="grid gap-4 sm:gap-6 mb-6 w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat, index) => (
         <StatCard key={index} {...stat} />
       ))}

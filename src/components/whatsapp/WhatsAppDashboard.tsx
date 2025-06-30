@@ -89,35 +89,39 @@ export const WhatsAppDashboard: React.FC = () => {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 p-4 sm:p-6 lg:p-8 bg-gray-50">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">WhatsApp Business</h1>
-          <p className="text-gray-600">Central de atendimento integrada</p>
+      {/* Header com Stats - Sem padding lateral */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-200">
+        <div className="px-6 py-4">
+          <div className="mb-4">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">WhatsApp Business</h1>
+            <p className="text-gray-600">Central de atendimento integrada</p>
+          </div>
+
+          {/* Estatísticas */}
+          <StatsGrid stats={statsData} />
+
+          {/* Temperatura dos Leads */}
+          <TemperatureBadges data={temperatureData} />
         </div>
-
-        {/* Estatísticas */}
-        <StatsGrid stats={statsData} />
-
-        {/* Temperatura dos Leads */}
-        <TemperatureBadges data={temperatureData} />
       </div>
 
       {/* Interface Principal com Abas */}
-      <div className="flex-1 flex flex-col overflow-hidden p-4 sm:p-6 lg:p-8 pt-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2 mb-6 flex-shrink-0">
-            <TabsTrigger value="chat" className="flex items-center space-x-2">
-              <MessageSquare className="w-4 h-4" />
-              <span>Chat</span>
-            </TabsTrigger>
-            <TabsTrigger value="diagnostics" className="flex items-center space-x-2">
-              <TestTube className="w-4 h-4" />
-              <span>Diagnóstico WhatsApp</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="px-6 pt-4 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="chat" className="flex items-center space-x-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>Chat</span>
+              </TabsTrigger>
+              <TabsTrigger value="diagnostics" className="flex items-center space-x-2">
+                <TestTube className="w-4 h-4" />
+                <span>Diagnóstico WhatsApp</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
           
-          <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden">
+          <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden mx-6 mb-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex">
               <div className="flex h-full w-full">
                 {/* Lista de Conversas */}
@@ -164,7 +168,7 @@ export const WhatsAppDashboard: React.FC = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="diagnostics" className="flex-1 overflow-hidden">
+          <TabsContent value="diagnostics" className="flex-1 overflow-hidden mx-6 mb-6">
             <WhatsAppTestPanel />
           </TabsContent>
         </Tabs>

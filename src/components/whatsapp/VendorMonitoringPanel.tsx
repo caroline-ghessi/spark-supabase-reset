@@ -97,45 +97,47 @@ export const VendorMonitoringPanel: React.FC = () => {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
-      {/* Header com Filtros */}
-      <div className="flex-shrink-0 p-4 sm:p-6 border-b bg-white">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4">Monitoramento de Vendedores</h1>
-        
-        {/* Filtros de Busca */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <div className="relative flex-1 w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar por cliente ou vendedor..."
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              className="pl-10 w-full"
-            />
-          </div>
+      {/* Header com Filtros - Sem background cinza */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-200">
+        <div className="px-6 py-4">
+          <h1 className="text-xl sm:text-2xl font-bold mb-4">Monitoramento de Vendedores</h1>
           
-          <div className="flex flex-wrap gap-4 items-center">
-            <label className="flex items-center gap-2 whitespace-nowrap">
-              <input
-                type="checkbox"
-                checked={filters.flagged_only}
-                onChange={(e) => setFilters(prev => ({ ...prev, flagged_only: e.target.checked }))}
-                className="rounded"
+          {/* Filtros de Busca */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="relative flex-1 w-full sm:w-auto">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por cliente ou vendedor..."
+                value={filters.search}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                className="pl-10 w-full"
               />
-              <Flag className="h-4 w-4 text-red-500" />
-              <span className="text-sm">Apenas Sinalizadas</span>
-            </label>
+            </div>
+            
+            <div className="flex flex-wrap gap-4 items-center">
+              <label className="flex items-center gap-2 whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={filters.flagged_only}
+                  onChange={(e) => setFilters(prev => ({ ...prev, flagged_only: e.target.checked }))}
+                  className="rounded"
+                />
+                <Flag className="h-4 w-4 text-red-500" />
+                <span className="text-sm">Apenas Sinalizadas</span>
+              </label>
 
-            <Input
-              type="date"
-              value={filters.date_from}
-              onChange={(e) => setFilters(prev => ({ ...prev, date_from: e.target.value }))}
-              className="w-40"
-            />
+              <Input
+                type="date"
+                value={filters.date_from}
+                onChange={(e) => setFilters(prev => ({ ...prev, date_from: e.target.value }))}
+                className="w-40"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Área Principal */}
+      {/* Área Principal - Full Width & Height */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Lista de Conversas */}
         <div className="w-full lg:w-1/3 xl:w-1/4 border-r border-gray-200 flex flex-col bg-white">

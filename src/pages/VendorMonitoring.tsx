@@ -6,7 +6,9 @@ import { VendorMonitoringPanel } from '@/components/whatsapp/VendorMonitoringPan
 export default function VendorMonitoring() {
   return (
     <ModernLayout>
-      <VendorMonitoringPanel />
+      <div className="h-full w-full">
+        <VendorMonitoringPanel />
+      </div>
     </ModernLayout>
   );
 }
