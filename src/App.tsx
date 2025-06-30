@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { Toaster } from '@/components/ui/toaster';
@@ -11,9 +12,9 @@ import './App.css';
 import Dashboard from '@/pages/Dashboard';
 import WhatsApp from '@/pages/WhatsApp';
 import Settings from '@/pages/Settings';
-import Login from '@/pages/Login';
+import { Login } from '@/pages/Login';
 import SignUp from '@/pages/SignUp';
-import EmergencyAccess from '@/pages/EmergencyAccess';
+import { EmergencyAccess } from '@/pages/EmergencyAccess';
 import FirstLogin from '@/pages/FirstLogin';
 import DevTools from '@/pages/DevTools';
 import NotFound from '@/pages/NotFound';

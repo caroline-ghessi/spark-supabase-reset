@@ -1,57 +1,36 @@
 
 import React from 'react';
-import { MessageCircle, Users, BarChart3, Bell, Settings } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { MessageCircle, BarChart3, Eye, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotifications } from '@/contexts/NotificationContext';
 
 interface MenuItem {
-  id: string;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  badge?: number;
+  title: string;
+  icon: string;
+  href: string;
+  description: string;
+  roles?: string[];
 }
 
 interface NavigableSidebarProps {
-  currentPage: string;
-  onPageChange: (page: string) => void;
+  items: MenuItem[];
 }
 
-export const NavigableSidebar: React.FC<NavigableSidebarProps> = ({
-  currentPage,
-  onPageChange
-}) => {
+export const NavigableSidebar: React.FC<NavigableSidebarProps> = ({ items }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { unreadCount } = useNotifications();
 
-  const menuItems: MenuItem[] = [
-    {
-      id: 'conversations',
-      icon: MessageCircle,
-      label: 'Conversas Ativas',
-      badge: 0 // Will be updated with real data
-    },
-    {
-      id: 'sellers',
-      icon: Users,
-      label: 'Painel Vendedores',
-      badge: 0 // Will be updated with alerts
-    },
-    {
-      id: 'metrics',
-      icon: BarChart3,
-      label: 'Métricas'
-    },
-    {
-      id: 'notifications',
-      icon: Bell,
-      label: 'Notificações',
-      badge: unreadCount
-    },
-    {
-      id: 'settings',
-      icon: Settings,
-      label: 'Configurações'
-    }
-  ];
+  const getIcon = (iconName: string) => {
+    const icons: { [key: string]: React.ComponentType<{ className?: string }> } = {
+      BarChart3,
+      MessageCircle,
+      Eye,
+      Settings
+    };
+    return icons[iconName] || MessageCircle;
+  };
 
   return (
     <div className="w-64 bg-white shadow-sm border-r border-gray-200 h-full flex flex-col">
@@ -70,14 +49,14 @@ export const NavigableSidebar: React.FC<NavigableSidebarProps> = ({
       
       {/* Menu Items */}
       <nav className="p-4 space-y-2 flex-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPage === item.id;
+        {items.map((item) => {
+          const Icon = getIcon(item.icon);
+          const isActive = location.pathname === item.href;
           
           return (
             <button
-              key={item.id}
-              onClick={() => onPageChange(item.id)}
+              key={item.href}
+              onClick={() => navigate(item.href)}
               className={cn(
                 'w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors',
                 isActive
@@ -90,12 +69,12 @@ export const NavigableSidebar: React.FC<NavigableSidebarProps> = ({
                   'w-5 h-5',
                   isActive ? 'text-orange-600' : 'text-gray-400'
                 )} />
-                <span className="font-medium">{item.label}</span>
+                <span className="font-medium">{item.title}</span>
               </div>
               
-              {item.badge && item.badge > 0 && (
+              {item.href === '/notifications' && unreadCount > 0 && (
                 <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center">
-                  {item.badge}
+                  {unreadCount}
                 </span>
               )}
             </button>
