@@ -74,91 +74,104 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
       return
     }
 
-    // Determinar números de telefone de forma segura
-    let phoneNumber = ''
-    let toNumber = ''
-    let fromNumber = ''
-
+    // Determinar números de telefone corrigido
+    let clientPhone = ''
+    let sellerPhone = ''
+    
     if (message.from_me) {
       // Mensagem enviada pelo vendedor
-      fromNumber = message.from || ''
-      toNumber = message.to || ''
-      phoneNumber = toNumber
+      sellerPhone = cleanPhone(message.from || '')
+      clientPhone = cleanPhone(message.to || '')
     } else {
       // Mensagem recebida do cliente
-      fromNumber = message.from || ''
-      toNumber = message.to || ''
-      phoneNumber = fromNumber
+      clientPhone = cleanPhone(message.from || '')
+      sellerPhone = cleanPhone(message.to || '')
     }
 
-    // Validar se temos números válidos
-    if (!phoneNumber || !fromNumber || !toNumber) {
-      console.error(`❌ [${requestId}] Números de telefone inválidos - From: ${fromNumber}, To: ${toNumber}`)
+    // Para mensagens de grupo, usar chat_id para determinar contexto
+    if (message.chat_id && message.chat_id.includes('@g.us')) {
+      console.log(`👥 [${requestId}] Mensagem de grupo detectada: ${message.chat_id}`)
+      // Para grupos, o client_phone será o número de quem enviou
+      if (!message.from_me) {
+        clientPhone = cleanPhone(message.from || '')
+        // Tentar determinar vendedor pelo parâmetro ou pelo contexto
+        if (sellerParam) {
+          const { data: seller } = await supabase
+            .from('sellers')
+            .select('*')
+            .ilike('name', `%${sellerParam}%`)
+            .single()
+          
+          if (seller) {
+            sellerPhone = seller.whatsapp_number
+          }
+        }
+      }
+    }
+
+    console.log(`🔍 [${requestId}] Telefones determinados - Cliente: ${clientPhone}, Vendedor: ${sellerPhone}`)
+
+    // Validar se temos dados suficientes
+    if (!clientPhone) {
+      console.error(`❌ [${requestId}] Não foi possível determinar telefone do cliente`)
       return
     }
 
-    const cleanPhone = phoneNumber.replace(/\D/g, '')
-    
-    console.log(`🔍 [${requestId}] Buscando vendedor - Param: ${sellerParam}, Phone: ${cleanPhone}`)
-
+    // Buscar vendedor
     let seller = null
     
-    // Buscar primeiro pelo parâmetro seller (se fornecido) e validar com número
-    if (sellerParam) {
+    // Primeiro tentar pelo número do vendedor (se temos)
+    if (sellerPhone) {
+      const { data: sellerByPhone } = await supabase
+        .from('sellers')
+        .select('*')
+        .eq('whatsapp_number', sellerPhone)
+        .single()
+      
+      if (sellerByPhone) {
+        seller = sellerByPhone
+        console.log(`✅ [${requestId}] Vendedor encontrado por número: ${seller.name}`)
+      }
+    }
+    
+    // Se não encontrou, tentar pelo parâmetro
+    if (!seller && sellerParam) {
       const { data: sellerByParam } = await supabase
         .from('sellers')
         .select('*')
         .ilike('name', `%${sellerParam}%`)
         .single()
 
-      if (sellerByParam && sellerByParam.whatsapp_number === cleanPhone) {
+      if (sellerByParam) {
         seller = sellerByParam
-        console.log(`✅ [${requestId}] Vendedor encontrado por parâmetro e validado: ${seller.name}`)
-      }
-    }
-    
-    // Se não encontrou pelo parâmetro, buscar só pelo número
-    if (!seller) {
-      const { data: sellerByPhone } = await supabase
-        .from('sellers')
-        .select('*')
-        .eq('whatsapp_number', cleanPhone)
-        .single()
-
-      if (sellerByPhone) {
-        seller = sellerByPhone
-        console.log(`✅ [${requestId}] Vendedor encontrado por número: ${seller.name}`)
+        console.log(`✅ [${requestId}] Vendedor encontrado por parâmetro: ${seller.name}`)
       }
     }
 
     if (!seller) {
-      console.log(`⚠️ [${requestId}] Vendedor não encontrado - Param: ${sellerParam}, Phone: ${cleanPhone}`)
+      console.log(`⚠️ [${requestId}] Vendedor não encontrado - Param: ${sellerParam}, Phone: ${sellerPhone}`)
       return
     }
-
-    // Determinar cliente phone de forma segura
-    const clientPhone = message.from_me ? toNumber : fromNumber
-    const cleanClientPhone = clientPhone.replace(/\D/g, '')
 
     // Buscar ou criar conversa
     const conversationId = await findOrCreateConversation(requestId, {
       sellerId: seller.id,
-      clientPhone: cleanClientPhone,
+      clientPhone: clientPhone,
       clientName: message.contact?.name || message.from_name || null,
       message
     })
 
-    // Preparar dados da mensagem com validações
+    // Preparar dados da mensagem
     const messageData = {
       whapi_message_id: message.id,
       seller_id: seller.id,
       conversation_id: conversationId,
-      from_number: fromNumber,
-      to_number: toNumber,
+      from_number: message.from || '',
+      to_number: message.to || '',
       is_from_seller: message.from_me || false,
-      client_phone: cleanClientPhone,
+      client_phone: clientPhone,
       message_type: message.type || 'text',
-      text_content: message.body || message.text || message.caption || null,
+      text_content: message.body || message.text?.body || message.caption || null,
       caption: message.caption || null,
       sent_at: new Date((message.timestamp || Date.now() / 1000) * 1000).toISOString(),
       status: 'received',
@@ -177,15 +190,34 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
         messageData.media_duration = message.voice.seconds || null
       }
       // Para outros tipos de mídia
-      else if (message.media_url || message.link) {
-        messageData.media_url = message.media_url || message.link || null
-        messageData.media_mime_type = message.mime_type || null
-        messageData.media_size = message.file_size || null
-        messageData.media_duration = message.duration || null
+      else if (message.image) {
+        messageData.media_url = message.image.link || null
+        messageData.media_mime_type = message.image.mime_type || null
+        messageData.media_size = message.image.file_size || null
+        messageData.thumbnail_url = message.image.preview || null
       }
-      
-      if (message.preview) {
-        messageData.thumbnail_url = message.preview
+      else if (message.video) {
+        messageData.media_url = message.video.link || null
+        messageData.media_mime_type = message.video.mime_type || null
+        messageData.media_size = message.video.file_size || null
+        messageData.media_duration = message.video.seconds || null
+        messageData.thumbnail_url = message.video.preview || null
+      }
+      else if (message.audio) {
+        messageData.media_url = message.audio.link || null
+        messageData.media_mime_type = message.audio.mime_type || null
+        messageData.media_size = message.audio.file_size || null
+        messageData.media_duration = message.audio.seconds || null
+      }
+      else if (message.document) {
+        messageData.media_url = message.document.link || null
+        messageData.media_mime_type = message.document.mime_type || null
+        messageData.media_size = message.document.file_size || null
+      }
+      else if (message.sticker) {
+        messageData.media_url = message.sticker.link || null
+        messageData.media_mime_type = message.sticker.mime_type || null
+        messageData.media_size = message.sticker.file_size || null
       }
     }
 
@@ -217,7 +249,7 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
         .insert({
           type: 'new_vendor_message',
           title: 'Nova mensagem do cliente',
-          message: `${message.contact?.name || message.from_name || cleanClientPhone}: ${messageData.text_content?.substring(0, 100) || '[Mídia]'}`,
+          message: `${message.contact?.name || message.from_name || clientPhone}: ${messageData.text_content?.substring(0, 100) || '[Mídia]'}`,
           context: {
             conversation_id: conversationId,
             seller_id: seller.id,
@@ -293,6 +325,7 @@ async function findOrCreateConversation(requestId: string, data: any) {
     .single()
 
   if (existing) {
+    console.log(`🔍 [${requestId}] Conversa existente encontrada: ${existing.id}`)
     return existing.id
   }
 
@@ -318,4 +351,12 @@ async function findOrCreateConversation(requestId: string, data: any) {
 
   console.log(`✅ [${requestId}] Conversa criada: ${newConversation.id}`)
   return newConversation.id
+}
+
+function cleanPhone(phone: string): string {
+  if (!phone) return ''
+  // Remove tudo que não é número e mantém apenas os dígitos
+  const cleaned = phone.replace(/\D/g, '')
+  console.log(`📞 Telefone limpo: ${phone} -> ${cleaned}`)
+  return cleaned
 }
