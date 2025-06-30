@@ -24,8 +24,8 @@ export const IntegrationTestPanel: React.FC = () => {
   const [testMessage, setTestMessage] = useState('Teste de integração - Sistema funcionando!');
 
   const sellers = [
-    { name: 'Márcia', phone: '5511995320167' },
-    { name: 'Ricardo', phone: '5181257025' },
+    { name: 'Márcia', phone: '5181181894' },
+    { name: 'Ricardo', phone: '5194916150' },
     { name: 'Luan', phone: '5181423303' },
     { name: 'Gabriel', phone: '5181690036' },
     { name: 'Felipe', phone: '5181252666' }
@@ -60,9 +60,12 @@ export const IntegrationTestPanel: React.FC = () => {
         .single();
 
       if (sellerError || !sellerData) {
+        console.log(`❌ Vendedor ${seller.name} não encontrado no banco. Erro:`, sellerError);
         updateTestResult(seller.name, 'error', 'Vendedor não encontrado no banco de dados');
         return;
       }
+
+      console.log(`✅ Vendedor ${seller.name} encontrado no banco:`, sellerData);
 
       if (!sellerData.whapi_token) {
         updateTestResult(seller.name, 'error', 'Token Whapi não configurado');
