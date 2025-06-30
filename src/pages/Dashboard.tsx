@@ -53,10 +53,10 @@ export default function Dashboard() {
       <div className="h-full w-full flex flex-col overflow-hidden">
         {/* Header com Stats */}
         <div className="flex-shrink-0 bg-white border-b border-gray-200">
-          <div className="p-4">
-            <div className="mb-6">
-              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Dashboard</h1>
-              <p className="text-gray-600">Visão geral da plataforma de gestão WhatsApp</p>
+          <div className="p-3">
+            <div className="mb-4">
+              <h1 className="text-lg font-semibold text-gray-900 mb-1">Dashboard</h1>
+              <p className="text-sm text-gray-600">Visão geral da plataforma de gestão WhatsApp</p>
             </div>
 
             <StatsGrid stats={statsData} />
@@ -65,71 +65,71 @@ export default function Dashboard() {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-hidden p-4">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
+        <div className="flex-1 overflow-hidden p-3">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-full">
             <Card className="shadow-sm border-gray-100 flex flex-col">
-              <CardHeader className="flex-shrink-0">
-                <CardTitle className="text-lg">Conversas Recentes</CardTitle>
+              <CardHeader className="flex-shrink-0 pb-2">
+                <CardTitle className="text-base">Conversas Recentes</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <CardContent className="flex-1 overflow-y-auto pt-0">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 truncate">Cliente João Silva</p>
-                      <p className="text-sm text-gray-600 truncate">Interessado em produto X</p>
+                      <p className="font-medium text-gray-900 truncate text-sm">Cliente João Silva</p>
+                      <p className="text-xs text-gray-600 truncate">Interessado em produto X</p>
                     </div>
-                    <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🔥 Quente</span>
+                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🔥 Quente</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 truncate">Cliente Maria Santos</p>
-                      <p className="text-sm text-gray-600 truncate">Solicitando orçamento</p>
+                      <p className="font-medium text-gray-900 truncate text-sm">Cliente Maria Santos</p>
+                      <p className="text-xs text-gray-600 truncate">Solicitando orçamento</p>
                     </div>
-                    <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🟡 Morno</span>
+                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🟡 Morno</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 truncate">Cliente Pedro Costa</p>
-                      <p className="text-sm text-gray-600 truncate">Primeira conversa</p>
+                      <p className="font-medium text-gray-900 truncate text-sm">Cliente Pedro Costa</p>
+                      <p className="text-xs text-gray-600 truncate">Primeira conversa</p>
                     </div>
-                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🔵 Frio</span>
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2">🔵 Frio</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="shadow-sm border-gray-100 flex flex-col">
-              <CardHeader className="flex-shrink-0">
-                <CardTitle className="text-lg">Performance dos Vendedores</CardTitle>
+              <CardHeader className="flex-shrink-0 pb-2">
+                <CardTitle className="text-base">Performance dos Vendedores</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <CardContent className="flex-1 overflow-y-auto pt-0">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-green-600 font-medium text-sm">AS</span>
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-green-600 font-medium text-xs">AS</span>
                       </div>
-                      <span className="font-medium text-gray-900 truncate">Antonio Santos</span>
+                      <span className="font-medium text-gray-900 truncate text-sm">Antonio Santos</span>
                     </div>
-                    <span className="text-green-600 font-bold flex-shrink-0 ml-2">9.2</span>
+                    <span className="text-green-600 font-bold flex-shrink-0 ml-2 text-sm">9.2</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-blue-600 font-medium text-sm">MS</span>
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-blue-600 font-medium text-xs">MS</span>
                       </div>
-                      <span className="font-medium text-gray-900 truncate">Maria Silva</span>
+                      <span className="font-medium text-gray-900 truncate text-sm">Maria Silva</span>
                     </div>
-                    <span className="text-green-600 font-bold flex-shrink-0 ml-2">8.8</span>
+                    <span className="text-green-600 font-bold flex-shrink-0 ml-2 text-sm">8.8</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-orange-600 font-medium text-sm">CO</span>
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-orange-600 font-medium text-xs">CO</span>
                       </div>
-                      <span className="font-medium text-gray-900 truncate">Carlos Oliveira</span>
+                      <span className="font-medium text-gray-900 truncate text-sm">Carlos Oliveira</span>
                     </div>
-                    <span className="text-yellow-600 font-bold flex-shrink-0 ml-2">7.5</span>
+                    <span className="text-yellow-600 font-bold flex-shrink-0 ml-2 text-sm">7.5</span>
                   </div>
                 </div>
               </CardContent>

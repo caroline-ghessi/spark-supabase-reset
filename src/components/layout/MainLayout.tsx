@@ -51,21 +51,21 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   });
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen w-screen bg-gray-50 overflow-hidden">
       <NavigableSidebar items={filteredItems} />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b px-6 py-4 flex justify-between items-center">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="bg-white border-b px-4 py-2 flex justify-between items-center flex-shrink-0 h-12">
           <div>
-            <h1 className="text-xl font-semibold text-gray-800">
+            <h1 className="text-lg font-semibold text-gray-800">
               Plataforma de Gestão WhatsApp
             </h1>
-            <p className="text-sm text-gray-600">
+            <p className="text-xs text-gray-600">
               Bem-vindo, {user.name}
             </p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <ConnectionStatus />
             <NotificationCenter />
           </div>
