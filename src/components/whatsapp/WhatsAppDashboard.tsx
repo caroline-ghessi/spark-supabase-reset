@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WhatsAppConversationsList } from './WhatsAppConversationsList';
 import { WhatsAppChatInterface } from './WhatsAppChatInterface';
 import { WhatsAppTestPanel } from './WhatsAppTestPanel';
+import { VendorMonitoringDashboard } from './VendorMonitoringDashboard';
 import { StatsGrid } from '@/components/ui/StatsGrid';
 import { TemperatureBadges } from '@/components/ui/TemperatureBadges';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -11,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
 import { testRLSPolicies } from '@/contexts/auth/userOperations';
 import { RealConversation } from '@/types/whatsapp';
-import { MessageSquare, Bot, User, AlertTriangle, TestTube, RefreshCw } from 'lucide-react';
+import { MessageSquare, Bot, User, AlertTriangle, TestTube, RefreshCw, Users } from 'lucide-react';
 
 export const WhatsAppDashboard: React.FC = () => {
   const {
@@ -179,10 +180,14 @@ export const WhatsAppDashboard: React.FC = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden">
           <div className="p-2 flex-shrink-0">
-            <TabsList className="grid w-full grid-cols-2 mb-2 h-8">
+            <TabsList className="grid w-full grid-cols-3 mb-2 h-8">
               <TabsTrigger value="chat" className="flex items-center space-x-2 text-xs">
                 <MessageSquare className="w-3 h-3" />
                 <span>Chat</span>
+              </TabsTrigger>
+              <TabsTrigger value="vendors" className="flex items-center space-x-2 text-xs">
+                <Users className="w-3 h-3" />
+                <span>Vendedores</span>
               </TabsTrigger>
               <TabsTrigger value="diagnostics" className="flex items-center space-x-2 text-xs">
                 <TestTube className="w-3 h-3" />
@@ -246,6 +251,12 @@ export const WhatsAppDashboard: React.FC = () => {
                   )}
                 </div>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="vendors" className="flex-1 overflow-hidden mx-2 mb-2">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden h-full">
+              <VendorMonitoringDashboard />
             </div>
           </TabsContent>
           
