@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlatformHealthCheck } from '@/components/testing/PlatformHealthCheck';
-import { WhatsAppTestPanel } from '@/components/whatsapp/WhatsAppTestPanel';
+import { WhapiTestPanel } from '@/components/whatsapp/WhapiTestPanel';
+import { IntegrationTestPanel } from '@/components/whatsapp/IntegrationTestPanel';
 import { DifyConnectionTest } from '@/components/whatsapp/DifyConnectionTest';
 
 export default function DevTools() {
@@ -30,9 +31,10 @@ export default function DevTools() {
         {/* Content */}
         <div className="flex-1 overflow-hidden p-4">
           <Tabs defaultValue="health" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 mb-6 flex-shrink-0">
               <TabsTrigger value="health">Health Check</TabsTrigger>
-              <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+              <TabsTrigger value="whapi">Whapi Debug</TabsTrigger>
+              <TabsTrigger value="integration">Integração</TabsTrigger>
               <TabsTrigger value="dify">Dify Bot</TabsTrigger>
               <TabsTrigger value="logs">Logs</TabsTrigger>
             </TabsList>
@@ -42,8 +44,12 @@ export default function DevTools() {
                 <PlatformHealthCheck />
               </TabsContent>
 
-              <TabsContent value="whatsapp" className="h-full">
-                <WhatsAppTestPanel />
+              <TabsContent value="whapi" className="h-full">
+                <WhapiTestPanel />
+              </TabsContent>
+
+              <TabsContent value="integration" className="h-full">
+                <IntegrationTestPanel />
               </TabsContent>
 
               <TabsContent value="dify" className="h-full">
