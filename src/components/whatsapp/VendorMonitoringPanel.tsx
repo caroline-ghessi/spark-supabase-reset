@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVendorMessages, VendorMessage, VendorConversation } from '@/hooks/useVendorMessages';
+import { SpinAnalysisPanel } from './SpinAnalysisPanel';
 import { 
   MessageCircle, Search, Flag, CheckCircle, 
   AlertCircle, Star, Image, FileText, Mic, Video, MapPin
@@ -35,14 +36,14 @@ export const VendorMonitoringPanel: React.FC = () => {
   // Carregar conversas quando os filtros mudarem
   useEffect(() => {
     loadConversations(filters);
-  }, [filters]);
+  }, [filters, loadConversations]);
 
   // Carregar mensagens quando uma conversa for selecionada
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation.conversation_id);
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, loadMessages]);
 
   // Filtrar conversas por busca
   const filteredConversations = useMemo(() => {
@@ -219,7 +220,7 @@ export const VendorMonitoringPanel: React.FC = () => {
               {/* Análise da Conversa */}
               {conversationAnalysis && (
                 <div className="p-4 border-t bg-gray-50 flex-shrink-0">
-                  <ConversationAnalysis analysis={conversationAnalysis} />
+                  <SpinAnalysisPanel analysis={conversationAnalysis} />
                 </div>
               )}
             </>
