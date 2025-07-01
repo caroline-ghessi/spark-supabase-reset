@@ -66,6 +66,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('🔍 Verificando sessão inicial...');
       
+      // Verificar acesso temporário de admin primeiro
+      const tempAdminAccess = localStorage.getItem('temp_admin_access');
+      const tempAdminUser = localStorage.getItem('temp_admin_user');
+      
+      if (tempAdminAccess && tempAdminUser) {
+        try {
+          const adminUser = JSON.parse(tempAdminUser);
+          console.log('👑 Acesso temporário de admin encontrado:', adminUser.email);
+          setUser(adminUser);
+          setLoading(false);
+          return;
+        } catch (error) {
+          console.error('❌ Erro ao carregar admin temporário:', error);
+          localStorage.removeItem('temp_admin_access');
+          localStorage.removeItem('temp_admin_user');
+        }
+      }
+      
       // Verificar acesso de emergência (mais seguro)
       if (checkEmergencyAccess(setUser)) {
         setLoading(false);
@@ -174,7 +192,8 @@ export const debugAuthState = () => {
       loginAttempts: localStorage.getItem('login_attempts_count'),
       blockedUntil: localStorage.getItem('login_blocked_until'),
       devAccess: localStorage.getItem('dev_access'),
-      emergencyAccess: localStorage.getItem('emergency_access')
+      emergencyAccess: localStorage.getItem('emergency_access'),
+      tempAdminAccess: localStorage.getItem('temp_admin_access')
     },
     sessionStorage: {
       reloadCount: sessionStorage.getItem('reload_count'),

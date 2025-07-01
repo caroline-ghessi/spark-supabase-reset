@@ -50,6 +50,30 @@ export const signIn = async (
       };
     }
 
+    // BYPASS TEMPORÁRIO PARA ADMIN (enquanto não há usuários reais)
+    if (cleanEmail === 'admin@whatsapp.local' && cleanPassword === 'admin123') {
+      const adminUser: User = {
+        id: 'temp-admin-001',
+        email: cleanEmail,
+        name: 'Administrator',
+        role: 'admin',
+        first_login_completed: true
+      };
+      
+      logSecurityEvent('TEMP_ADMIN_LOGIN', { email: cleanEmail });
+      setUser(adminUser);
+      
+      // Salvar temporariamente
+      localStorage.setItem('temp_admin_access', 'true');
+      localStorage.setItem('temp_admin_user', JSON.stringify(adminUser));
+      
+      return { 
+        success: true, 
+        user: adminUser,
+        message: 'Acesso temporário de administrador' 
+      };
+    }
+
     // Login normal via Supabase
     console.log('🔑 Tentando login no Supabase...');
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -159,9 +183,11 @@ export const signOut = async (
     localStorage.removeItem('emergency_access');
     localStorage.removeItem('emergency_expires');
     localStorage.removeItem('emergency_token');
+    localStorage.removeItem('temp_admin_access');
+    localStorage.removeItem('temp_admin_user');
     
     // Se for usuário real do Supabase, fazer logout
-    if (session && user?.id && !user.id.startsWith('dev-') && !user.id.startsWith('emergency-')) {
+    if (session && user?.id && !user.id.startsWith('dev-') && !user.id.startsWith('emergency-') && !user.id.startsWith('temp-')) {
       await supabase.auth.signOut();
     }
     
