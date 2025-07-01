@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, Users, MessageSquare, TrendingUp, RefreshCw } from 'lucide-react';
 import { useVendorConversations } from '@/hooks/useVendorConversations';
-import { useVendorMessages } from '@/hooks/useVendorMessages';
+import { useVendorMessages, VendorMessage as ImportedVendorMessage } from '@/hooks/useVendorMessages';
 import { VendorConversationsList } from './VendorConversationsList';
 import { VendorChatInterface } from './VendorChatInterface';
 
@@ -25,6 +25,18 @@ type VendorConversation = {
   client_messages: number;
   whapi_status: string;
   avg_quality_score?: number;
+};
+
+// Adapter function to convert ImportedVendorMessage to VendorMessage
+const adaptVendorMessages = (messages: ImportedVendorMessage[]) => {
+  return messages.map(msg => ({
+    id: msg.id,
+    text_content: msg.text_content || '',
+    is_from_seller: msg.is_from_seller,
+    sent_at: msg.sent_at,
+    status: msg.status,
+    seller_name: msg.seller_name
+  }));
 };
 
 export const VendorMonitoringDashboard: React.FC = () => {
@@ -164,25 +176,18 @@ export const VendorMonitoringDashboard: React.FC = () => {
                 conversation_id: selectedConversation.conversation_id,
                 client_phone: selectedConversation.client_phone,
                 client_name: selectedConversation.client_name || selectedConversation.client_phone,
-                conversation_status: selectedConversation.conversation_status,
-                lead_temperature: 'warm', // valor padrão já que não está na view
-                seller_id: selectedConversation.seller_id,
                 seller_name: selectedConversation.seller_name,
-                whapi_status: selectedConversation.whapi_status,
+                conversation_status: selectedConversation.conversation_status,
+                last_message_at: selectedConversation.last_message_at,
                 total_messages: selectedConversation.total_messages,
                 seller_messages: selectedConversation.seller_messages,
-                client_messages: selectedConversation.client_messages,
-                avg_quality_score: selectedConversation.avg_quality_score,
-                flagged_count: 0, // valor padrão já que não está na view
-                first_message_at: selectedConversation.last_message_at,
-                last_message_at: selectedConversation.last_message_at,
-                last_message_text: selectedConversation.last_message_text,
-                created_at: selectedConversation.last_message_at,
-                updated_at: selectedConversation.last_message_at
+                client_messages: selectedConversation.client_messages
               }}
-              messages={messages}
-              loading={messagesLoading}
-              onRefresh={() => {}}
+              messages={adaptVendorMessages(messages)}
+              onSendMessage={async (message: string) => {
+                // Placeholder para implementar envio de mensagem
+                console.log('Enviando mensagem:', message);
+              }}
             />
           ) : (
             <Card className="h-full flex items-center justify-center">
