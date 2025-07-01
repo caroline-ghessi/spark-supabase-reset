@@ -15,23 +15,27 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   // Log de tentativas de acesso para auditoria
   useEffect(() => {
-    if (!loading && user) {
-      console.log('🔐 Acesso autorizado:', {
-        user: user.email,
-        role: user.role,
-        route: location.pathname,
-        timestamp: new Date().toISOString(),
-        requiredRole
-      });
-    } else if (!loading && !user) {
-      console.warn('🚫 Acesso negado - usuário não autenticado:', {
-        route: location.pathname,
-        timestamp: new Date().toISOString(),
-        requiredRole
-      });
+    if (!loading) {
+      if (user) {
+        console.log('🔐 Acesso autorizado:', {
+          user: user.email,
+          role: user.role,
+          route: location.pathname,
+          timestamp: new Date().toISOString(),
+          requiredRole,
+          isRealUser: !user.id.startsWith('temp-') && !user.id.startsWith('dev-') && !user.id.startsWith('emergency-')
+        });
+      } else {
+        console.warn('🚫 Acesso negado - usuário não autenticado:', {
+          route: location.pathname,
+          timestamp: new Date().toISOString(),
+          requiredRole
+        });
+      }
     }
   }, [user, loading, location.pathname, requiredRole]);
 
+  // Mostrar loading enquanto verifica autenticação
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -43,6 +47,15 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     );
   }
 
+  // Bloquear usuários temporários para rotas críticas como WhatsApp
+  if (user && (user.id.startsWith('temp-') || user.id.startsWith('dev-') || user.id.startsWith('emergency-'))) {
+    if (location.pathname === '/whatsapp') {
+      console.warn('🚫 Usuário temporário tentando acessar WhatsApp - redirecionando para login');
+      return <Navigate to="/login" state={{ from: location, message: 'Use uma conta real para acessar o WhatsApp' }} replace />;
+    }
+  }
+
+  // Redirecionar para login se não autenticado
   if (!user) {
     console.warn('🚫 Redirecionando para login - usuário não autenticado');
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -78,17 +91,6 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
         </div>
       </div>
     );
-  }
-
-  // Log de acesso especial para debug e auditoria
-  if (user.id.startsWith('dev-') || user.id.startsWith('emergency-')) {
-    console.warn('⚠️ Acesso especial ativo:', {
-      dev: user.id.startsWith('dev-'),
-      emergency: user.id.startsWith('emergency-'),
-      user: user.email,
-      route: location.pathname,
-      timestamp: new Date().toISOString()
-    });
   }
 
   return <>{children}</>;

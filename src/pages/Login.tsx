@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,13 +18,23 @@ export const Login: React.FC = () => {
 
   const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Mensagem específica do redirecionamento
+  const redirectMessage = location.state?.message;
 
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (user && !authLoading) {
-      navigate('/', { replace: true });
+      // Verificar se é usuário real antes de redirecionar
+      const isRealUser = !user.id.startsWith('temp-') && !user.id.startsWith('dev-') && !user.id.startsWith('emergency-');
+      
+      if (isRealUser) {
+        const from = location.state?.from?.pathname || '/';
+        navigate(from, { replace: true });
+      }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +52,10 @@ export const Login: React.FC = () => {
       
       if (result.success) {
         toast.success(result.message || 'Login realizado com sucesso!');
-        navigate('/', { replace: true });
+        
+        // Redirecionar para onde o usuário tentava acessar
+        const from = location.state?.from?.pathname || '/';
+        navigate(from, { replace: true });
       } else {
         setError(result.error || 'Erro ao fazer login');
         toast.error(result.error || 'Erro ao fazer login');
@@ -56,14 +69,9 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = (type: 'admin' | 'dev') => {
-    if (type === 'admin') {
-      setEmail('admin@whatsapp.local');
-      setPassword('admin123');
-    } else if (type === 'dev') {
-      setEmail('dev@admin.local');
-      setPassword('DevSecure2024!@#');
-    }
+  const handleQuickLogin = (email: string) => {
+    setEmail(email);
+    setPassword(''); // Usuário deve digitar a senha
   };
 
   if (authLoading) {
@@ -93,14 +101,26 @@ export const Login: React.FC = () => {
           </p>
         </div>
 
-        {/* Avisos de Desenvolvimento */}
+        {/* Mensagem de redirecionamento */}
+        {redirectMessage && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <Info className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              {redirectMessage}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Informações para usuário real */}
         <Alert className="border-blue-200 bg-blue-50">
           <Info className="h-4 w-4" />
           <AlertDescription className="text-sm">
-            <strong>Contas de Teste Disponíveis:</strong>
-            <div className="mt-2 space-y-1">
-              <div>• Admin: admin@whatsapp.local / admin123</div>
-              <div>• Dev: dev@admin.local / DevSecure2024!@#</div>
+            <strong>Para acessar o WhatsApp:</strong>
+            <div className="mt-2">
+              Use sua conta real: <strong>caroline@drystore.com.br</strong>
+            </div>
+            <div className="text-xs text-gray-600 mt-1">
+              Contas temporárias não têm acesso às mensagens reais.
             </div>
           </AlertDescription>
         </Alert>
@@ -180,25 +200,17 @@ export const Login: React.FC = () => {
                 )}
               </Button>
 
-              {/* Botões de Acesso Rápido */}
-              <div className="grid grid-cols-2 gap-2">
+              {/* Botão de Acesso Rápido */}
+              <div className="text-center">
                 <Button 
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => handleQuickLogin('admin')}
+                  onClick={() => handleQuickLogin('caroline@drystore.com.br')}
                   disabled={loading}
+                  className="text-xs"
                 >
-                  👑 Admin
-                </Button>
-                <Button 
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickLogin('dev')}
-                  disabled={loading}
-                >
-                  🔧 Dev
+                  👤 Usar Caroline (Conta Real)
                 </Button>
               </div>
             </form>

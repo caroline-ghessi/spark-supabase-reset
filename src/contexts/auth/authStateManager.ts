@@ -18,7 +18,23 @@ export const useAuthState = () => {
     try {
       console.log('🔍 Verificando sessão inicial...');
       
-      // Verificar acesso temporário de admin primeiro
+      // Primeiro, verificar sessão normal do Supabase (PRIORIDADE)
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('❌ Erro ao verificar sessão:', error);
+      } else if (session?.user) {
+        console.log('📋 Sessão real do Supabase encontrada:', session.user.email);
+        setSession(session);
+        setTimeout(() => {
+          loadUserData(session.user.id, setUser, setLoading);
+        }, 100);
+        return;
+      }
+
+      console.log('📋 Nenhuma sessão real encontrada, verificando acessos temporários...');
+      
+      // Verificar acesso temporário de admin apenas se não houver sessão real
       const tempAdminAccess = localStorage.getItem('temp_admin_access');
       const tempAdminUser = localStorage.getItem('temp_admin_user');
       
@@ -36,7 +52,7 @@ export const useAuthState = () => {
         }
       }
       
-      // Verificar acesso de emergência (mais seguro)
+      // Verificar acesso de emergência
       if (checkEmergencyAccess(setUser)) {
         setLoading(false);
         return;
@@ -48,26 +64,9 @@ export const useAuthState = () => {
         return;
       }
 
-      // Verificar sessão normal do Supabase
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('❌ Erro ao verificar sessão:', error);
-        setLoading(false);
-        return;
-      }
-
-      console.log('📋 Sessão inicial encontrada:', session?.user?.email || 'Nenhuma sessão');
-
-      if (session?.user) {
-        setSession(session);
-        // Usar setTimeout para evitar problemas de sincronização
-        setTimeout(() => {
-          loadUserData(session.user.id, setUser, setLoading);
-        }, 100);
-      } else {
-        setLoading(false);
-      }
+      // Se chegou até aqui, não há usuário autenticado
+      console.log('🚫 Nenhum usuário autenticado encontrado');
+      setLoading(false);
     } catch (error) {
       console.error('💥 Erro na verificação inicial:', error);
       setLoading(false);
@@ -90,11 +89,13 @@ export const useAuthState = () => {
   }, [checkInitialSession]);
 
   useEffect(() => {
+    if (initialized) return; // Evitar múltiplas inicializações
+
     console.log('🔄 AuthProvider: Inicializando sistema de autenticação...');
     
-    let isActive = true; // Flag para evitar updates depois que componente desmonta
+    let isActive = true;
 
-    // Configurar listener de autenticação
+    // Configurar listener de autenticação ANTES de verificar sessão inicial
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!isActive) return;
@@ -104,26 +105,30 @@ export const useAuthState = () => {
         setSession(session);
         
         if (session?.user) {
-          console.log('📊 Usuário detectado, carregando dados:', session.user.email);
-          // Usar setTimeout para evitar problemas de sincronização
+          console.log('📊 Usuário real detectado, carregando dados:', session.user.email);
+          // Limpar acessos temporários quando usuário real faz login
+          localStorage.removeItem('temp_admin_access');
+          localStorage.removeItem('temp_admin_user');
+          localStorage.removeItem('dev_access');
+          localStorage.removeItem('dev_user');
+          localStorage.removeItem('emergency_access');
+          
           setTimeout(() => {
             if (isActive) {
               loadUserData(session.user.id, setUser, setLoading);
             }
           }, 100);
         } else {
-          console.log('🚫 Sem sessão, limpando dados do usuário');
+          console.log('🚫 Sem sessão real, limpando dados do usuário');
           setUser(null);
           setLoading(false);
         }
       }
     );
 
-    // Verificar sessão inicial apenas uma vez
-    if (!initialized) {
-      checkInitialSession();
-      setInitialized(true);
-    }
+    // Verificar sessão inicial
+    checkInitialSession();
+    setInitialized(true);
 
     return () => {
       isActive = false;

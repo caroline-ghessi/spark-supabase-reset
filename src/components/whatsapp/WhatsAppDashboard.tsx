@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
 import { useAuth } from '@/contexts/AuthContext';
 import { testRLSPolicies } from '@/contexts/auth/userOperations';
 import { RealConversation } from '@/types/whatsapp';
 
-// Import the new smaller components
+// Import the dashboard components
 import { DashboardHeader } from './dashboard/DashboardHeader';
 import { DashboardAlerts } from './dashboard/DashboardAlerts';
 import { DashboardStats } from './dashboard/DashboardStats';
@@ -17,8 +17,8 @@ export const WhatsAppDashboard: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<RealConversation | null>(null);
   const [rlsTestPassed, setRlsTestPassed] = useState<boolean | null>(null);
   const [testingRLS, setTestingRLS] = useState(false);
-  const [showDebug, setShowDebug] = useState(!user);
-  const [shouldLoadConversations, setShouldLoadConversations] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
 
   const {
     conversations,
@@ -30,70 +30,91 @@ export const WhatsAppDashboard: React.FC = () => {
     loadConversations
   } = useWhatsAppIntegration();
 
-  // Testar RLS apenas uma vez quando usuário logar
+  // Verificar se é usuário real
+  const isRealUser = user && !user.id.startsWith('temp-') && !user.id.startsWith('dev-') && !user.id.startsWith('emergency-');
+
+  // Testar RLS apenas para usuários reais
   useEffect(() => {
     let isMounted = true;
+    
     const runRLSTest = async () => {
-      if (!user || testingRLS) return;
+      if (!isRealUser || testingRLS || rlsTestPassed !== null) return;
       
+      console.log('🧪 Testando políticas RLS para usuário real:', user.email);
       setTestingRLS(true);
-      const testResult = await testRLSPolicies();
-      if (isMounted) {
-        setRlsTestPassed(testResult);
-        setTestingRLS(false);
+      
+      try {
+        const testResult = await testRLSPolicies();
+        if (isMounted) {
+          setRlsTestPassed(testResult);
+          console.log('🧪 Resultado do teste RLS:', testResult ? 'PASSOU' : 'FALHOU');
+        }
+      } catch (error) {
+        console.error('❌ Erro no teste RLS:', error);
+        if (isMounted) {
+          setRlsTestPassed(false);
+        }
+      } finally {
+        if (isMounted) {
+          setTestingRLS(false);
+        }
       }
     };
 
-    if (user && rlsTestPassed === null) {
+    if (isRealUser && !authLoading) {
       runRLSTest();
     }
 
     return () => {
       isMounted = false;
     };
-  }, [user, rlsTestPassed, testingRLS]);
+  }, [isRealUser, user, authLoading, testingRLS, rlsTestPassed]);
 
-  // Auto-carregar conversas quando usuário autenticar - APENAS UMA VEZ
+  // Carregar conversas apenas para usuários reais e após RLS passar
   useEffect(() => {
-    if (user && !authLoading && !shouldLoadConversations) {
-      console.log('👤 Usuário autenticado, preparando para carregar conversas...', user.email);
-      setShouldLoadConversations(true);
-    }
-  }, [user, authLoading, shouldLoadConversations]);
-
-  // Carregar conversas apenas quando flag estiver setada
-  useEffect(() => {
-    if (shouldLoadConversations && !loading) {
-      console.log('📊 Carregando conversas...');
+    if (isRealUser && !authLoading && !loading && !conversationsLoaded && rlsTestPassed === true) {
+      console.log('📊 Carregando conversas para usuário real:', user.email);
       loadConversations();
-      setShouldLoadConversations(false);
+      setConversationsLoaded(true);
     }
-  }, [shouldLoadConversations, loading, loadConversations]);
+  }, [isRealUser, user, authLoading, loading, conversationsLoaded, rlsTestPassed, loadConversations]);
 
-  // Memoizar handlers para evitar re-renders
+  // Handlers memoizados
   const handleSelectConversation = useCallback(async (conversation: RealConversation) => {
+    console.log('💬 Selecionando conversa:', conversation.client_name);
     setSelectedConversation(conversation);
     await loadMessages(conversation.id);
   }, [loadMessages]);
 
   const handleSendMessage = useCallback(async (message: string) => {
     if (!selectedConversation) return;
+    console.log('📤 Enviando mensagem para:', selectedConversation.client_name);
     await sendMessage(selectedConversation.id, message);
   }, [selectedConversation, sendMessage]);
 
   const handleTakeControl = useCallback(async () => {
     if (!selectedConversation) return;
+    console.log('🎯 Assumindo controle da conversa:', selectedConversation.client_name);
     await takeControl(selectedConversation.id);
   }, [selectedConversation, takeControl]);
 
   const handleRetryLoad = useCallback(async () => {
     console.log('🔄 Tentando recarregar conversas...');
+    setConversationsLoaded(false);
     await loadConversations();
+    setConversationsLoaded(true);
   }, [loadConversations]);
 
   const toggleDebug = useCallback(() => {
     setShowDebug(prev => !prev);
   }, []);
+
+  // Mostrar debug apenas para usuários não-reais
+  useEffect(() => {
+    if (!isRealUser) {
+      setShowDebug(true);
+    }
+  }, [isRealUser]);
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
@@ -116,16 +137,19 @@ export const WhatsAppDashboard: React.FC = () => {
             onRetryLoad={handleRetryLoad}
           />
 
-          <DashboardStats
-            user={user}
-            conversations={conversations}
-          />
+          {/* Stats apenas para usuários reais */}
+          {isRealUser && (
+            <DashboardStats
+              user={user}
+              conversations={conversations}
+            />
+          )}
         </div>
       </div>
 
-      {/* Interface Principal Maximizada */}
+      {/* Interface Principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {user ? (
+        {isRealUser ? (
           <DashboardContent
             conversations={conversations}
             selectedConversation={selectedConversation}
