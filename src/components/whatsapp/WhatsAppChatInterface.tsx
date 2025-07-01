@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, User, Clock, CheckCircle, MessageSquare } from 'lucide-react';
+import { Send, Bot, User, Clock, CheckCircle, MessageSquare, Phone } from 'lucide-react';
 import { RealConversation, RealMessage } from '@/types/whatsapp';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -108,21 +108,36 @@ export const WhatsAppChatInterface: React.FC<WhatsAppChatInterfaceProps> = ({
           </div>
         </div>
 
-        {/* Botão Assumir Controle */}
+        {/* Seção do Botão Assumir Controle com informações do cliente */}
         {conversation.status !== 'manual' && (
-          <Button
-            onClick={handleTakeControl}
-            disabled={takingControl}
-            className="bg-orange-500 hover:bg-orange-600 text-white mt-3"
-          >
-            {takingControl ? 'Assumindo...' : '👆 Assumir Controle'}
-          </Button>
+          <div className="flex items-center justify-between mt-3 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <User className="w-4 h-4" />
+                <span className="font-medium">{conversation.client_name}</span>
+              </div>
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Phone className="w-4 h-4" />
+                <span>{conversation.client_phone}</span>
+              </div>
+            </div>
+            <Button
+              onClick={handleTakeControl}
+              disabled={takingControl}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {takingControl ? 'Assumindo...' : '👆 Assumir Controle'}
+            </Button>
+          </div>
         )}
 
         {conversation.status === 'manual' && (
           <div className="flex items-center space-x-2 text-green-600 mt-3">
             <CheckCircle className="w-5 h-5" />
             <span className="font-medium">Você está no controle desta conversa</span>
+            <span className="text-sm text-gray-500 ml-4">
+              • {conversation.client_name} ({conversation.client_phone})
+            </span>
           </div>
         )}
       </div>
