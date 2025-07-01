@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -24,8 +25,14 @@ export const useConversations = (sourceFilter?: string) => {
       }
 
       // Carregar conversas com filtro de source se especificado
-      const { data, error } = await supabase
-        .rpc('get_conversations', sourceFilter ? { source_filter: sourceFilter } : {});
+      let rpcCall;
+      if (sourceFilter) {
+        rpcCall = supabase.rpc('get_conversations', { source_filter: sourceFilter });
+      } else {
+        rpcCall = supabase.rpc('get_conversations');
+      }
+
+      const { data, error } = await rpcCall;
 
       if (error) {
         console.error('❌ Erro ao carregar conversas:', error);

@@ -16,6 +16,7 @@ interface VendorConversation {
   seller_messages: number;
   client_messages: number;
   whapi_status: string;
+  avg_quality_score?: number;
 }
 
 interface VendorMessage {
@@ -27,103 +28,47 @@ interface VendorMessage {
   conversation_id: string;
 }
 
-export const useVendorConversations = () => {
+export const useVendorConversations = (refreshKey?: number) => {
   const [conversations, setConversations] = useState<VendorConversation[]>([]);
-  const [messages, setMessages] = useState<Record<string, VendorMessage[]>>({});
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadConversations = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('vendor_conversations_full')
         .select('*')
         .order('last_message_at', { ascending: false });
 
-      if (error) {
-        console.error('Erro ao carregar conversas de vendedores:', error);
+      if (fetchError) {
+        console.error('Erro ao carregar conversas de vendedores:', fetchError);
+        setError('Erro ao carregar conversas');
         toast.error('Erro ao carregar conversas');
         return;
       }
 
       setConversations(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar conversas:', error);
+    } catch (err) {
+      console.error('Erro ao carregar conversas:', err);
+      setError('Erro ao carregar conversas');
       toast.error('Erro ao carregar conversas');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadMessages = async (conversationId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('vendor_whatsapp_messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('sent_at', { ascending: true });
-
-      if (error) {
-        console.error('Erro ao carregar mensagens:', error);
-        toast.error('Erro ao carregar mensagens');
-        return;
-      }
-
-      setMessages(prev => ({
-        ...prev,
-        [conversationId]: data || []
-      }));
-    } catch (error) {
-      console.error('Erro ao carregar mensagens:', error);
-      toast.error('Erro ao carregar mensagens');
-    }
-  };
-
-  const sendMessage = async (conversationId: string, sellerId: string, clientPhone: string, message: string) => {
-    try {
-      console.log('🚀 Enviando mensagem via Whapi:', {
-        conversationId,
-        sellerId,
-        clientPhone,
-        message: message.substring(0, 50) + '...'
-      });
-
-      const { data, error } = await supabase.functions.invoke('whapi-send-message', {
-        body: {
-          seller_id: sellerId,
-          to_number: clientPhone,
-          message: message,
-          message_type: 'text'
-        }
-      });
-
-      if (error) {
-        console.error('❌ Erro ao enviar mensagem:', error);
-        throw new Error(error.message || 'Erro ao enviar mensagem');
-      }
-
-      console.log('✅ Mensagem enviada com sucesso:', data);
-      
-      // Recarregar mensagens após envio
-      await loadMessages(conversationId);
-      
-      return data;
-    } catch (error) {
-      console.error('❌ Erro no envio da mensagem:', error);
-      throw error;
-    }
-  };
+  const refetch = loadConversations;
 
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [refreshKey]);
 
   return {
     conversations,
-    messages,
     loading,
-    loadConversations,
-    loadMessages,
-    sendMessage
+    error,
+    refetch
   };
 };

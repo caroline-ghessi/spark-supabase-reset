@@ -55,15 +55,17 @@ interface VendorMessagesFilters {
   search?: string;
 }
 
-export const useVendorMessages = () => {
+export const useVendorMessages = (conversationId?: string, refreshKey?: number) => {
   const [conversations, setConversations] = useState<VendorConversation[]>([]);
-  const [messages, setMessages] = useState<Record<string, VendorMessage[]>>({});
+  const [messages, setMessages] = useState<VendorMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const loadConversations = useCallback(async (filters: VendorMessagesFilters = {}) => {
     console.log('🔍 Carregando conversas de vendedores com filtros:', filters);
     setLoading(true);
+    setError(null);
     
     try {
       let query = supabase
@@ -84,13 +86,14 @@ export const useVendorMessages = () => {
         query = query.gte('created_at', filters.date_from);
       }
 
-      const { data, error } = await query;
+      const { data, error: fetchError } = await query;
 
-      if (error) {
-        console.error('❌ Erro ao carregar conversas de vendedores:', error);
+      if (fetchError) {
+        console.error('❌ Erro ao carregar conversas de vendedores:', fetchError);
+        setError(`Falha ao carregar conversas: ${fetchError.message}`);
         toast({
           title: "Erro",
-          description: `Falha ao carregar conversas: ${error.message}`,
+          description: `Falha ao carregar conversas: ${fetchError.message}`,
           variant: "destructive",
         });
         return;
@@ -98,8 +101,9 @@ export const useVendorMessages = () => {
 
       console.log('✅ Conversas de vendedores carregadas:', data?.length || 0);
       setConversations(data || []);
-    } catch (error) {
-      console.error('❌ Erro na busca de conversas:', error);
+    } catch (err) {
+      console.error('❌ Erro na busca de conversas:', err);
+      setError("Falha ao carregar conversas - erro de conexão");
       toast({
         title: "Erro",
         description: "Falha ao carregar conversas - erro de conexão",
@@ -110,34 +114,30 @@ export const useVendorMessages = () => {
     }
   }, [toast]);
 
-  const loadMessages = useCallback(async (conversationId: string) => {
-    console.log(`📨 Carregando mensagens de vendedor para conversa: ${conversationId}`);
+  const loadMessages = useCallback(async (targetConversationId: string) => {
+    console.log(`📨 Carregando mensagens de vendedor para conversa: ${targetConversationId}`);
     
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('vendor_whatsapp_messages')
         .select('*')
-        .eq('conversation_id', conversationId)
+        .eq('conversation_id', targetConversationId)
         .order('sent_at', { ascending: true });
 
-      if (error) {
-        console.error('❌ Erro ao carregar mensagens do vendedor:', error);
+      if (fetchError) {
+        console.error('❌ Erro ao carregar mensagens do vendedor:', fetchError);
         toast({
           title: "Erro",
-          description: `Falha ao carregar mensagens: ${error.message}`,
+          description: `Falha ao carregar mensagens: ${fetchError.message}`,
           variant: "destructive",
         });
         return;
       }
 
-      console.log(`✅ Mensagens do vendedor carregadas para ${conversationId}:`, data?.length || 0);
-      
-      setMessages(prev => ({
-        ...prev,
-        [conversationId]: data || []
-      }));
-    } catch (error) {
-      console.error('❌ Erro na busca de mensagens do vendedor:', error);
+      console.log(`✅ Mensagens do vendedor carregadas para ${targetConversationId}:`, data?.length || 0);
+      setMessages(data || []);
+    } catch (err) {
+      console.error('❌ Erro na busca de mensagens do vendedor:', err);
       toast({
         title: "Erro",
         description: "Falha ao carregar mensagens - erro de conexão",
@@ -146,11 +146,17 @@ export const useVendorMessages = () => {
     }
   }, [toast]);
 
+  const refetch = useCallback(() => {
+    if (conversationId) {
+      loadMessages(conversationId);
+    }
+  }, [conversationId, loadMessages]);
+
   const flagMessage = useCallback(async (messageId: string, notes?: string) => {
     console.log(`🚩 Sinalizando mensagem: ${messageId}`);
     
     try {
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('vendor_whatsapp_messages')
         .update({
           flagged_for_review: true,
@@ -160,11 +166,11 @@ export const useVendorMessages = () => {
         })
         .eq('id', messageId);
 
-      if (error) {
-        console.error('❌ Erro ao sinalizar mensagem:', error);
+      if (updateError) {
+        console.error('❌ Erro ao sinalizar mensagem:', updateError);
         toast({
           title: "Erro",
-          description: `Falha ao sinalizar mensagem: ${error.message}`,
+          description: `Falha ao sinalizar mensagem: ${updateError.message}`,
           variant: "destructive",
         });
         return;
@@ -177,33 +183,25 @@ export const useVendorMessages = () => {
         className: "bg-orange-500 text-white",
       });
 
-      // Atualizar estado local
-      setMessages(prev => {
-        const updated = { ...prev };
-        Object.keys(updated).forEach(convId => {
-          updated[convId] = updated[convId].map(msg =>
-            msg.id === messageId
-              ? { ...msg, flagged_for_review: true, review_notes: notes }
-              : msg
-          );
-        });
-        return updated;
-      });
-    } catch (error) {
-      console.error('❌ Erro ao sinalizar mensagem:', error);
+      // Recarregar mensagens
+      if (conversationId) {
+        loadMessages(conversationId);
+      }
+    } catch (err) {
+      console.error('❌ Erro ao sinalizar mensagem:', err);
       toast({
         title: "Erro",
         description: "Falha ao sinalizar mensagem - erro de conexão",
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, conversationId, loadMessages]);
 
   const unflagMessage = useCallback(async (messageId: string) => {
     console.log(`✅ Removendo sinalização da mensagem: ${messageId}`);
     
     try {
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('vendor_whatsapp_messages')
         .update({
           flagged_for_review: false,
@@ -213,11 +211,11 @@ export const useVendorMessages = () => {
         })
         .eq('id', messageId);
 
-      if (error) {
-        console.error('❌ Erro ao remover sinalização:', error);
+      if (updateError) {
+        console.error('❌ Erro ao remover sinalização:', updateError);
         toast({
           title: "Erro",
-          description: `Falha ao remover sinalização: ${error.message}`,
+          description: `Falha ao remover sinalização: ${updateError.message}`,
           variant: "destructive",
         });
         return;
@@ -230,34 +228,28 @@ export const useVendorMessages = () => {
         className: "bg-green-500 text-white",
       });
 
-      // Atualizar estado local
-      setMessages(prev => {
-        const updated = { ...prev };
-        Object.keys(updated).forEach(convId => {
-          updated[convId] = updated[convId].map(msg =>
-            msg.id === messageId
-              ? { ...msg, flagged_for_review: false, review_notes: undefined }
-              : msg
-          );
-        });
-        return updated;
-      });
-    } catch (error) {
-      console.error('❌ Erro ao remover sinalização:', error);
+      // Recarregar mensagens
+      if (conversationId) {
+        loadMessages(conversationId);
+      }
+    } catch (err) {
+      console.error('❌ Erro ao remover sinalização:', err);
       toast({
         title: "Erro",
         description: "Falha ao remover sinalização - erro de conexão",
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, conversationId, loadMessages]);
 
   return {
     conversations,
     messages,
     loading,
+    error,
     loadConversations,
     loadMessages,
+    refetch,
     flagMessage,
     unflagMessage
   };
