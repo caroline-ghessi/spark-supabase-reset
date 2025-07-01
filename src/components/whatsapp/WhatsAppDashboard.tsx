@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { WhatsAppConversationsList } from './WhatsAppConversationsList';
 import { WhatsAppChatInterface } from './WhatsAppChatInterface';
 import { AuthDebugPanel } from './AuthDebugPanel';
@@ -15,6 +15,12 @@ import { MessageSquare, Bot, User, AlertTriangle, RefreshCw, Eye, EyeOff } from 
 
 export const WhatsAppDashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
+  const [selectedConversation, setSelectedConversation] = useState<RealConversation | null>(null);
+  const [rlsTestPassed, setRlsTestPassed] = useState<boolean | null>(null);
+  const [testingRLS, setTestingRLS] = useState(false);
+  const [showDebug, setShowDebug] = useState(!user);
+  const [shouldLoadConversations, setShouldLoadConversations] = useState(false);
+
   const {
     conversations,
     messages,
@@ -25,55 +31,73 @@ export const WhatsAppDashboard: React.FC = () => {
     loadConversations
   } = useWhatsAppIntegration();
 
-  const [selectedConversation, setSelectedConversation] = useState<RealConversation | null>(null);
-  const [rlsTestPassed, setRlsTestPassed] = useState<boolean | null>(null);
-  const [testingRLS, setTestingRLS] = useState(false);
-  const [showDebug, setShowDebug] = useState(!user); // Mostrar debug se não estiver autenticado
-
-  // Testar RLS no carregamento inicial
+  // Testar RLS apenas uma vez quando usuário logar
   useEffect(() => {
+    let isMounted = true;
     const runRLSTest = async () => {
+      if (!user || testingRLS) return;
+      
       setTestingRLS(true);
       const testResult = await testRLSPolicies();
-      setRlsTestPassed(testResult);
-      setTestingRLS(false);
+      if (isMounted) {
+        setRlsTestPassed(testResult);
+        setTestingRLS(false);
+      }
     };
 
-    if (user) {
+    if (user && rlsTestPassed === null) {
       runRLSTest();
     }
-  }, [user]);
 
-  // Auto-carregar conversas quando usuário autenticar
+    return () => {
+      isMounted = false;
+    };
+  }, [user, rlsTestPassed, testingRLS]);
+
+  // Auto-carregar conversas quando usuário autenticar - APENAS UMA VEZ
   useEffect(() => {
-    if (user && !authLoading) {
-      console.log('👤 Usuário autenticado, carregando conversas...', user.email);
-      loadConversations();
+    if (user && !authLoading && !shouldLoadConversations) {
+      console.log('👤 Usuário autenticado, preparando para carregar conversas...', user.email);
+      setShouldLoadConversations(true);
     }
-  }, [user, authLoading, loadConversations]);
+  }, [user, authLoading, shouldLoadConversations]);
 
-  const handleSelectConversation = async (conversation: RealConversation) => {
+  // Carregar conversas apenas quando flag estiver setada
+  useEffect(() => {
+    if (shouldLoadConversations && !loading) {
+      console.log('📊 Carregando conversas...');
+      loadConversations();
+      setShouldLoadConversations(false);
+    }
+  }, [shouldLoadConversations, loading, loadConversations]);
+
+  // Memoizar handlers para evitar re-renders
+  const handleSelectConversation = useCallback(async (conversation: RealConversation) => {
     setSelectedConversation(conversation);
     await loadMessages(conversation.id);
-  };
+  }, [loadMessages]);
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = useCallback(async (message: string) => {
     if (!selectedConversation) return;
     await sendMessage(selectedConversation.id, message);
-  };
+  }, [selectedConversation, sendMessage]);
 
-  const handleTakeControl = async () => {
+  const handleTakeControl = useCallback(async () => {
     if (!selectedConversation) return;
     await takeControl(selectedConversation.id);
-  };
+  }, [selectedConversation, takeControl]);
 
-  const handleRetryLoad = async () => {
+  const handleRetryLoad = useCallback(async () => {
     console.log('🔄 Tentando recarregar conversas...');
     await loadConversations();
-  };
+  }, [loadConversations]);
 
-  // Estatísticas das conversas
-  const stats = {
+  const toggleDebug = useCallback(() => {
+    setShowDebug(prev => !prev);
+  }, []);
+
+  // Memoizar estatísticas para evitar recálculos
+  const stats = useMemo(() => ({
     total: conversations.length,
     bot: conversations.filter(c => c.status === 'bot').length,
     manual: conversations.filter(c => c.status === 'manual').length,
@@ -81,9 +105,9 @@ export const WhatsAppDashboard: React.FC = () => {
     hot: conversations.filter(c => c.lead_temperature === 'hot').length,
     warm: conversations.filter(c => c.lead_temperature === 'warm').length,
     cold: conversations.filter(c => c.lead_temperature === 'cold').length
-  };
+  }), [conversations]);
 
-  const statsData = [
+  const statsData = useMemo(() => [
     {
       title: 'Total',
       value: stats.total,
@@ -112,13 +136,13 @@ export const WhatsAppDashboard: React.FC = () => {
       iconColor: 'text-orange-600',
       iconBgColor: 'bg-orange-100'
     }
-  ];
+  ], [stats]);
 
-  const temperatureData = {
+  const temperatureData = useMemo(() => ({
     hot: stats.hot,
     warm: stats.warm,
     cold: stats.cold
-  };
+  }), [stats]);
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
@@ -130,7 +154,7 @@ export const WhatsAppDashboard: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowDebug(!showDebug)}
+              onClick={toggleDebug}
               className="text-xs"
             >
               {showDebug ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}

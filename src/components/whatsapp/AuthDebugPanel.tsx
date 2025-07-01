@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUser } from '@/components/users/AuthenticatedUserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { User, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 
-export const AuthDebugPanel: React.FC = () => {
+export const AuthDebugPanel: React.FC = memo(() => {
   const auth = useAuth();
   const userContext = useUser();
 
@@ -103,4 +103,6 @@ export const AuthDebugPanel: React.FC = () => {
       </CardContent>
     </Card>
   );
-};
+});
+
+AuthDebugPanel.displayName = 'AuthDebugPanel';

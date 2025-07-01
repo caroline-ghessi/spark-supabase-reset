@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealMessage } from '@/types/whatsapp';
@@ -8,7 +8,7 @@ export const useMessages = () => {
   const [messages, setMessages] = useState<Record<string, RealMessage[]>>({});
   const { toast } = useToast();
 
-  const loadMessages = async (conversationId: string) => {
+  const loadMessages = useCallback(async (conversationId: string) => {
     console.log(`📨 Carregando mensagens para conversa: ${conversationId}`);
     
     try {
@@ -51,9 +51,9 @@ export const useMessages = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  const sendMessage = async (conversationId: string, message: string) => {
+  const sendMessage = useCallback(async (conversationId: string, message: string) => {
     console.log(`📤 Enviando mensagem para conversa: ${conversationId}`);
     
     try {
@@ -86,7 +86,7 @@ export const useMessages = () => {
       });
       throw error;
     }
-  };
+  }, [toast]);
 
   return {
     messages,

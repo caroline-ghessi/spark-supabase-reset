@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealConversation } from '@/types/whatsapp';
@@ -9,7 +9,7 @@ export const useConversations = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     console.log('📊 Carregando conversas...');
     setLoading(true);
     
@@ -86,9 +86,9 @@ export const useConversations = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const takeControl = async (conversationId: string) => {
+  const takeControl = useCallback(async (conversationId: string) => {
     console.log('🎯 Assumindo controle da conversa:', conversationId);
     
     try {
@@ -110,9 +110,6 @@ export const useConversations = () => {
         className: "bg-orange-500 text-white",
       });
 
-      // Recarregar conversas para atualizar status
-      await loadConversations();
-
       return response.data;
     } catch (error) {
       console.error('❌ Erro ao assumir controle:', error);
@@ -123,7 +120,7 @@ export const useConversations = () => {
       });
       throw error;
     }
-  };
+  }, [toast]);
 
   return {
     conversations,

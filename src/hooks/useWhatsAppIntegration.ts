@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useConversations } from './useConversations';
 import { useMessages } from './useMessages';
 import { useWhatsAppRealtime } from './useWhatsAppRealtime';
@@ -7,12 +7,13 @@ import { RealConversation } from '@/types/whatsapp';
 
 export const useWhatsAppIntegration = (selectedConversation?: RealConversation | null) => {
   const [localSelectedConversation, setLocalSelectedConversation] = useState<RealConversation | null>(selectedConversation || null);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
 
   const {
     conversations,
     setConversations,
     loading,
-    loadConversations,
+    loadConversations: originalLoadConversations,
     takeControl
   } = useConversations();
 
@@ -23,34 +24,47 @@ export const useWhatsAppIntegration = (selectedConversation?: RealConversation |
     sendMessage
   } = useMessages();
 
-  // Set up real-time subscriptions with callback to update selected conversation
+  // Memoizar função de carregamento para evitar re-renders
+  const loadConversations = useCallback(async () => {
+    if (!conversationsLoaded) {
+      console.log('🔄 Carregando conversas (primeira vez)...');
+      await originalLoadConversations();
+      setConversationsLoaded(true);
+    }
+  }, [originalLoadConversations, conversationsLoaded]);
+
+  // Memoizar callback de atualização de conversa
+  const onConversationUpdate = useCallback((updatedConversation: RealConversation) => {
+    if (localSelectedConversation && updatedConversation.id === localSelectedConversation.id) {
+      console.log('🔄 Atualizando conversa selecionada:', updatedConversation.status);
+      setLocalSelectedConversation(updatedConversation);
+    }
+  }, [localSelectedConversation]);
+
+  // Set up real-time subscriptions com callbacks memoizados
   useWhatsAppRealtime({
     setConversations,
     setMessages,
     selectedConversation: localSelectedConversation,
-    onConversationUpdate: (updatedConversation: RealConversation) => {
-      // Se a conversa atualizada é a que está selecionada, atualizar o estado local
-      if (localSelectedConversation && updatedConversation.id === localSelectedConversation.id) {
-        console.log('🔄 Atualizando conversa selecionada:', updatedConversation.status);
-        setLocalSelectedConversation(updatedConversation);
-      }
-    }
+    onConversationUpdate
   });
 
-  // Load conversations on mount
+  // Load conversations apenas uma vez no mount
   useEffect(() => {
-    loadConversations();
-  }, []);
+    if (!conversationsLoaded) {
+      loadConversations();
+    }
+  }, [loadConversations, conversationsLoaded]);
 
   // Sync with external selectedConversation prop
   useEffect(() => {
     if (selectedConversation && (!localSelectedConversation || selectedConversation.id !== localSelectedConversation.id)) {
       setLocalSelectedConversation(selectedConversation);
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, localSelectedConversation]);
 
-  // Enhanced takeControl function that updates local state immediately
-  const takeControlWithSync = async (conversationId: string) => {
+  // Enhanced takeControl function que usa useCallback
+  const takeControlWithSync = useCallback(async (conversationId: string) => {
     console.log('🎯 Assumindo controle com sincronização local:', conversationId);
     
     try {
@@ -66,16 +80,17 @@ export const useWhatsAppIntegration = (selectedConversation?: RealConversation |
         setLocalSelectedConversation(updatedConversation);
       }
       
-      // Recarregar conversas para garantir sincronização
-      await loadConversations();
+      // Recarregar conversas apenas se necessário
+      setConversationsLoaded(false);
       
     } catch (error) {
       console.error('❌ Erro ao assumir controle:', error);
       throw error;
     }
-  };
+  }, [takeControl, localSelectedConversation]);
 
-  return {
+  // Memoizar valores de retorno para evitar re-renders desnecessários
+  const returnValue = useMemo(() => ({
     conversations,
     messages,
     loading,
@@ -85,7 +100,18 @@ export const useWhatsAppIntegration = (selectedConversation?: RealConversation |
     loadConversations,
     selectedConversation: localSelectedConversation,
     setSelectedConversation: setLocalSelectedConversation
-  };
+  }), [
+    conversations,
+    messages,
+    loading,
+    loadMessages,
+    sendMessage,
+    takeControlWithSync,
+    loadConversations,
+    localSelectedConversation
+  ]);
+
+  return returnValue;
 };
 
 // Re-export types for backward compatibility
