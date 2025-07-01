@@ -6,9 +6,26 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, Users, MessageSquare, TrendingUp, RefreshCw } from 'lucide-react';
 import { useVendorConversations } from '@/hooks/useVendorConversations';
-import { useVendorMessages, VendorMessage, VendorConversation } from '@/hooks/useVendorMessages';
+import { useVendorMessages } from '@/hooks/useVendorMessages';
 import { VendorConversationsList } from './VendorConversationsList';
 import { VendorChatInterface } from './VendorChatInterface';
+
+// Usar o tipo do useVendorConversations que é compatível com a view
+type VendorConversation = {
+  conversation_id: string;
+  client_phone: string;
+  client_name: string | null;
+  seller_name: string;
+  seller_id: string;
+  conversation_status: string;
+  last_message_at: string;
+  last_message_text: string | null;
+  total_messages: number;
+  seller_messages: number;
+  client_messages: number;
+  whapi_status: string;
+  avg_quality_score?: number;
+};
 
 export const VendorMonitoringDashboard: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<VendorConversation | null>(null);
@@ -143,7 +160,26 @@ export const VendorMonitoringDashboard: React.FC = () => {
         <div className="flex-1 min-w-0">
           {selectedConversation ? (
             <VendorChatInterface
-              conversation={selectedConversation}
+              conversation={{
+                conversation_id: selectedConversation.conversation_id,
+                client_phone: selectedConversation.client_phone,
+                client_name: selectedConversation.client_name || selectedConversation.client_phone,
+                conversation_status: selectedConversation.conversation_status,
+                lead_temperature: 'warm', // valor padrão já que não está na view
+                seller_id: selectedConversation.seller_id,
+                seller_name: selectedConversation.seller_name,
+                whapi_status: selectedConversation.whapi_status,
+                total_messages: selectedConversation.total_messages,
+                seller_messages: selectedConversation.seller_messages,
+                client_messages: selectedConversation.client_messages,
+                avg_quality_score: selectedConversation.avg_quality_score,
+                flagged_count: 0, // valor padrão já que não está na view
+                first_message_at: selectedConversation.last_message_at,
+                last_message_at: selectedConversation.last_message_at,
+                last_message_text: selectedConversation.last_message_text,
+                created_at: selectedConversation.last_message_at,
+                updated_at: selectedConversation.last_message_at
+              }}
               messages={messages}
               loading={messagesLoading}
               onRefresh={() => {}}
