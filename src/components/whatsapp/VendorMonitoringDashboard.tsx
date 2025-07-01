@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,8 +33,7 @@ const adaptVendorMessages = (messages: ImportedVendorMessage[]) => {
     text_content: msg.text_content || '',
     is_from_seller: msg.is_from_seller,
     sent_at: msg.sent_at,
-    status: msg.status,
-    seller_name: msg.seller_name
+    status: msg.status
   }));
 };
 
