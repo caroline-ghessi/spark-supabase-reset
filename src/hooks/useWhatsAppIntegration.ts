@@ -1,11 +1,10 @@
-
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useConversations } from './useConversations';
 import { useMessages } from './useMessages';
 import { useWhatsAppRealtime } from './useWhatsAppRealtime';
 import { RealConversation } from '@/types/whatsapp';
 
-export const useWhatsAppIntegration = (selectedConversation?: RealConversation | null) => {
+export const useWhatsAppIntegration = (selectedConversation?: RealConversation | null, sourceFilter?: string) => {
   const [localSelectedConversation, setLocalSelectedConversation] = useState<RealConversation | null>(selectedConversation || null);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
 
@@ -15,7 +14,7 @@ export const useWhatsAppIntegration = (selectedConversation?: RealConversation |
     loading,
     loadConversations: originalLoadConversations,
     takeControl
-  } = useConversations();
+  } = useConversations(sourceFilter);
 
   const {
     messages,
@@ -27,11 +26,11 @@ export const useWhatsAppIntegration = (selectedConversation?: RealConversation |
   // Memoizar função de carregamento para evitar re-renders
   const loadConversations = useCallback(async () => {
     if (!conversationsLoaded) {
-      console.log('🔄 Carregando conversas (primeira vez)...');
+      console.log('🔄 Carregando conversas (primeira vez)...', sourceFilter ? `source: ${sourceFilter}` : 'sem filtro');
       await originalLoadConversations();
       setConversationsLoaded(true);
     }
-  }, [originalLoadConversations, conversationsLoaded]);
+  }, [originalLoadConversations, conversationsLoaded, sourceFilter]);
 
   // Memoizar callback de atualização de conversa
   const onConversationUpdate = useCallback((updatedConversation: RealConversation) => {
@@ -63,7 +62,7 @@ export const useWhatsAppIntegration = (selectedConversation?: RealConversation |
     }
   }, [selectedConversation, localSelectedConversation]);
 
-  // Enhanced takeControl function que usa useCallback
+  // Enhanced takeControl function that uses useCallback
   const takeControlWithSync = useCallback(async (conversationId: string) => {
     console.log('🎯 Assumindo controle com sincronização local:', conversationId);
     

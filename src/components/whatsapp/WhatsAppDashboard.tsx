@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +19,7 @@ export const WhatsAppDashboard: React.FC = () => {
   const [showDebug, setShowDebug] = useState(false);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
 
+  // Usar apenas conversas da API Oficial do WhatsApp (source = 'whatsapp')
   const {
     conversations,
     messages,
@@ -28,7 +28,7 @@ export const WhatsAppDashboard: React.FC = () => {
     sendMessage,
     takeControl,
     loadConversations
-  } = useWhatsAppIntegration();
+  } = useWhatsAppIntegration(undefined, 'whatsapp');
 
   // Verificar se é usuário real
   const isRealUser = user && !user.id.startsWith('temp-') && !user.id.startsWith('dev-') && !user.id.startsWith('emergency-');
@@ -81,7 +81,7 @@ export const WhatsAppDashboard: React.FC = () => {
 
   // Handlers memoizados
   const handleSelectConversation = useCallback(async (conversation: RealConversation) => {
-    console.log('💬 Selecionando conversa:', conversation.client_name);
+    console.log('💬 Selecionando conversa da API Oficial:', conversation.client_name, 'Source:', conversation.source);
     setSelectedConversation(conversation);
     await loadMessages(conversation.id);
   }, [loadMessages]);
@@ -150,16 +150,33 @@ export const WhatsAppDashboard: React.FC = () => {
       {/* Interface Principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {isRealUser ? (
-          <DashboardContent
-            conversations={conversations}
-            selectedConversation={selectedConversation}
-            messages={messages}
-            loading={loading}
-            onSelectConversation={handleSelectConversation}
-            onSendMessage={handleSendMessage}
-            onTakeControl={handleTakeControl}
-            onRefresh={loadConversations}
-          />
+          <div className="flex-1 flex flex-col">
+            {/* Indicador de que estamos vendo apenas API Oficial */}
+            <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-blue-800">
+                    WhatsApp API Oficial - Central de Atendimento
+                  </span>
+                </div>
+                <span className="text-xs text-blue-600">
+                  {conversations.length} conversas ativas
+                </span>
+              </div>
+            </div>
+            
+            <DashboardContent
+              conversations={conversations}
+              selectedConversation={selectedConversation}
+              messages={messages}
+              loading={loading}
+              onSelectConversation={handleSelectConversation}
+              onSendMessage={handleSendMessage}
+              onTakeControl={handleTakeControl}
+              onRefresh={loadConversations}
+            />
+          </div>
         ) : (
           <EmptyStateMessage />
         )}

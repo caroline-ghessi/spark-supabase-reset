@@ -2,7 +2,7 @@
 import React from 'react';
 import { WhatsAppConversationsList } from '@/components/whatsapp/WhatsAppConversationsList';
 import { WhatsAppChatInterface } from '@/components/whatsapp/WhatsAppChatInterface';
-import { MessageSquare, RefreshCw } from 'lucide-react';
+import { MessageSquare, RefreshCw, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RealConversation, RealMessage } from '@/types/whatsapp';
 
@@ -33,8 +33,11 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
         {/* Lista de Conversas */}
         <div className="w-full sm:w-80 lg:w-96 border-r border-gray-200 flex flex-col flex-shrink-0">
           <div className="p-3 border-b border-gray-200 flex-shrink-0">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">Conversas WhatsApp</h3>
-            <p className="text-xs text-gray-600">{conversations.length} conversas ativas</p>
+            <div className="flex items-center space-x-2 mb-1">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <h3 className="text-sm font-semibold text-gray-900">API Oficial WhatsApp</h3>
+            </div>
+            <p className="text-xs text-gray-600">{conversations.length} conversas do atendimento central</p>
           </div>
           <div className="flex-1 overflow-hidden">
             <WhatsAppConversationsList
@@ -63,19 +66,23 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Selecione uma conversa
                 </h3>
-                <p className="text-gray-600 text-sm">
-                  Escolha uma conversa da lista para começar o atendimento
+                <p className="text-gray-600 text-sm mb-4">
+                  Escolha uma conversa da API Oficial para começar o atendimento
                 </p>
                 {conversations.length === 0 && !loading && (
-                  <Button 
-                    onClick={onRefresh} 
-                    className="mt-3"
-                    variant="outline"
-                    size="sm"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Recarregar Conversas
-                  </Button>
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500">
+                      Nenhuma conversa da API Oficial encontrada
+                    </p>
+                    <Button 
+                      onClick={onRefresh} 
+                      variant="outline"
+                      size="sm"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Recarregar Conversas
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
