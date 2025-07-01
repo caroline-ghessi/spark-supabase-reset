@@ -27,9 +27,9 @@ export const useConversations = (sourceFilter?: string) => {
       // Carregar conversas com filtro de source se especificado
       let rpcCall;
       if (sourceFilter) {
-        rpcCall = supabase.rpc('get_conversations', { source_filter: sourceFilter });
+        rpcCall = supabase.rpc('get_conversations' as any, { source_filter: sourceFilter });
       } else {
-        rpcCall = supabase.rpc('get_conversations');
+        rpcCall = supabase.rpc('get_conversations' as any);
       }
 
       const { data, error } = await rpcCall;

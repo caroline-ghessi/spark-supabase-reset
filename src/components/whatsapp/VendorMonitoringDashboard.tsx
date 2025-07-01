@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, Users, MessageSquare, TrendingUp, RefreshCw } from 'lucide-react';
 import { useVendorConversations } from '@/hooks/useVendorConversations';
-import { useVendorMessages } from '@/hooks/useVendorMessages';
+import { useVendorMessages, VendorMessage, VendorConversation } from '@/hooks/useVendorMessages';
 import { VendorConversationsList } from './VendorConversationsList';
 import { VendorChatInterface } from './VendorChatInterface';
 
 export const VendorMonitoringDashboard: React.FC = () => {
-  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [selectedConversation, setSelectedConversation] = useState<VendorConversation | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const {
@@ -24,19 +24,14 @@ export const VendorMonitoringDashboard: React.FC = () => {
   const {
     messages,
     loading: messagesLoading,
-    error: messagesError,
-    refetch: refetchMessages
   } = useVendorMessages(selectedConversation?.conversation_id, refreshKey);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
     refetchConversations();
-    if (selectedConversation) {
-      refetchMessages();
-    }
   };
 
-  const handleSelectConversation = (conversation: any) => {
+  const handleSelectConversation = (conversation: VendorConversation) => {
     console.log('📱 Selecionando conversa do vendedor:', conversation.client_name, 'Seller:', conversation.seller_name);
     setSelectedConversation(conversation);
   };
@@ -151,7 +146,7 @@ export const VendorMonitoringDashboard: React.FC = () => {
               conversation={selectedConversation}
               messages={messages}
               loading={messagesLoading}
-              onRefresh={() => refetchMessages()}
+              onRefresh={() => {}}
             />
           ) : (
             <Card className="h-full flex items-center justify-center">
@@ -170,12 +165,12 @@ export const VendorMonitoringDashboard: React.FC = () => {
       </div>
 
       {/* Error Handling */}
-      {conversationsError || messagesError ? (
+      {conversationsError ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-red-500 rounded-full"></div>
             <span className="text-sm text-red-800">
-              Erro ao carregar dados: {conversationsError || messagesError}
+              Erro ao carregar dados: {conversationsError}
             </span>
           </div>
         </div>
