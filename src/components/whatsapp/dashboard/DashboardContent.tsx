@@ -12,8 +12,8 @@ interface DashboardContentProps {
   messages: Record<string, RealMessage[]>;
   loading: boolean;
   onSelectConversation: (conversation: RealConversation) => void;
-  onSendMessage: (message: string) => void;
-  onTakeControl: () => void;
+  onSendMessage: (message: string) => Promise<void>;
+  onTakeControl: () => Promise<void>;
   onRefresh: () => void;
 }
 
