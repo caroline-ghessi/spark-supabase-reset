@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Bot, User, Clock, CheckCircle, MessageSquare } from 'lucide-react';
 import { RealConversation, RealMessage } from '@/types/whatsapp';
 import { formatDistanceToNow } from 'date-fns';
@@ -85,12 +87,12 @@ export const WhatsAppChatInterface: React.FC<WhatsAppChatInterfaceProps> = ({
   };
 
   return (
-    <Card className="h-full flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Header da Conversa */}
-      <CardHeader className="border-b">
+      <div className="flex-shrink-0 border-b bg-white p-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg">{conversation.client_name}</CardTitle>
+            <h3 className="text-lg font-semibold">{conversation.client_name}</h3>
             <p className="text-sm text-gray-600">{conversation.client_phone}</p>
           </div>
           <div className="flex items-center space-x-2">
@@ -111,24 +113,24 @@ export const WhatsAppChatInterface: React.FC<WhatsAppChatInterfaceProps> = ({
           <Button
             onClick={handleTakeControl}
             disabled={takingControl}
-            className="bg-orange-500 hover:bg-orange-600 text-white"
+            className="bg-orange-500 hover:bg-orange-600 text-white mt-3"
           >
             {takingControl ? 'Assumindo...' : '👆 Assumir Controle'}
           </Button>
         )}
 
         {conversation.status === 'manual' && (
-          <div className="flex items-center space-x-2 text-green-600">
+          <div className="flex items-center space-x-2 text-green-600 mt-3">
             <CheckCircle className="w-5 h-5" />
             <span className="font-medium">Você está no controle desta conversa</span>
           </div>
         )}
-      </CardHeader>
+      </div>
 
-      {/* Área de Mensagens */}
-      <CardContent className="flex-1 p-0 overflow-hidden">
-        <div className="h-full flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Área de Mensagens com ScrollArea */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <ScrollArea className="flex-1 p-4">
+          <div className="space-y-4">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -199,44 +201,44 @@ export const WhatsAppChatInterface: React.FC<WhatsAppChatInterfaceProps> = ({
             )}
             <div ref={messagesEndRef} />
           </div>
+        </ScrollArea>
+      </div>
 
-          {/* Input de Mensagem */}
-          <div className="border-t p-4">
-            <div className="flex space-x-2">
-              <Input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={
-                  conversation.status === 'manual'
-                    ? "Digite sua mensagem..."
-                    : "Assuma o controle para enviar mensagens"
-                }
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                disabled={sending || conversation.status !== 'manual'}
-                className="flex-1"
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={!message.trim() || sending || conversation.status !== 'manual'}
-                className="bg-orange-500 hover:bg-orange-600"
-              >
-                {sending ? (
-                  <Clock className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            
-            {conversation.status !== 'manual' && (
-              <p className="text-xs text-gray-500 mt-2">
-                💡 Assuma o controle da conversa para poder enviar mensagens
-              </p>
+      {/* Input de Mensagem */}
+      <div className="flex-shrink-0 border-t bg-white p-4">
+        <div className="flex space-x-2">
+          <Input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder={
+              conversation.status === 'manual'
+                ? "Digite sua mensagem..."
+                : "Assuma o controle para enviar mensagens"
+            }
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            disabled={sending || conversation.status !== 'manual'}
+            className="flex-1"
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={!message.trim() || sending || conversation.status !== 'manual'}
+            className="bg-orange-500 hover:bg-orange-600"
+          >
+            {sending ? (
+              <Clock className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
             )}
-          </div>
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+        
+        {conversation.status !== 'manual' && (
+          <p className="text-xs text-gray-500 mt-2">
+            💡 Assuma o controle da conversa para poder enviar mensagens
+          </p>
+        )}
+      </div>
+    </div>
   );
 };
