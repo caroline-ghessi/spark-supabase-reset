@@ -28,10 +28,10 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
   onRefresh
 }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex-1 flex mx-2 my-2">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex-1 flex mx-2 my-2 h-full max-h-[calc(100vh-200px)]">
       <div className="flex h-full w-full">
-        {/* Lista de Conversas */}
-        <div className="w-full sm:w-80 lg:w-96 border-r border-gray-200 flex flex-col flex-shrink-0">
+        {/* Lista de Conversas com altura fixa */}
+        <div className="w-full sm:w-80 lg:w-96 border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
           <div className="p-3 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center space-x-2 mb-1">
               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -39,7 +39,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
             </div>
             <p className="text-xs text-gray-600">{conversations.length} conversas do atendimento central</p>
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden min-h-0">
             <WhatsAppConversationsList
               conversations={conversations}
               selectedConversationId={selectedConversation?.id}
@@ -50,8 +50,8 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
           </div>
         </div>
 
-        {/* Interface de Chat Maximizada */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Interface de Chat com altura fixa */}
+        <div className="flex-1 flex flex-col min-w-0 h-full">
           {selectedConversation ? (
             <WhatsAppChatInterface
               conversation={selectedConversation}
