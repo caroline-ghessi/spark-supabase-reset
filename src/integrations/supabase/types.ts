@@ -968,7 +968,7 @@ export type Database = {
         Returns: boolean
       }
       get_conversations: {
-        Args: Record<PropertyKey, never>
+        Args: Record<PropertyKey, never> | { source_filter?: string }
         Returns: {
           id: string
           client_phone: string
