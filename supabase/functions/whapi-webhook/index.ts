@@ -297,7 +297,7 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
       }
     }
 
-    // Salvar mensagem
+    // Salvar mensagem na tabela vendor_whatsapp_messages
     const { data: savedMessage, error } = await supabase
       .from('vendor_whatsapp_messages')
       .upsert(messageData, { onConflict: 'whapi_message_id' })
@@ -305,8 +305,41 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
       .single()
 
     if (error) {
-      console.error(`❌ [${requestId}] Erro ao salvar mensagem:`, error)
+      console.error(`❌ [${requestId}] Erro ao salvar mensagem na tabela vendor:`, error)
       return
+    }
+
+    // TAMBÉM salvar na tabela messages padrão para unificar o sistema
+    const unifiedMessageData = {
+      conversation_id: conversationId,
+      sender_type: message.from_me ? 'seller' : 'client',
+      sender_name: message.from_me ? seller.name : (message.contact?.name || message.from_name || 'Cliente'),
+      content: messageData.text_content || '[Mídia]',
+      message_type: messageData.message_type,
+      file_url: messageData.media_url,
+      file_name: message.document?.filename || null,
+      file_size: messageData.media_size,
+      whatsapp_message_id: message.id,
+      status: 'received',
+      metadata: {
+        whapi_message_id: message.id,
+        vendor_message_id: savedMessage.id,
+        seller_id: seller.id,
+        original_timestamp: messageData.sent_at
+      }
+    }
+
+    // Tentar salvar na tabela messages unificada
+    const { data: unifiedMessage, error: unifiedError } = await supabase
+      .from('messages')
+      .upsert(unifiedMessageData, { onConflict: 'whatsapp_message_id' })
+      .select()
+      .single()
+
+    if (unifiedError) {
+      console.error(`❌ [${requestId}] Erro ao salvar mensagem na tabela unificada:`, unifiedError)
+    } else {
+      console.log(`✅ [${requestId}] Mensagem também salva na tabela unificada: ${unifiedMessage.id}`)
     }
 
     // Atualizar conversa
@@ -323,13 +356,13 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
       await supabase
         .from('notifications')
         .insert({
-          type: 'new_vendor_message',
+          type: 'new_message',
           title: 'Nova mensagem do cliente',
           message: `${message.contact?.name || message.from_name || clientPhone}: ${messageData.text_content?.substring(0, 100) || '[Mídia]'}`,
           context: {
             conversation_id: conversationId,
             seller_id: seller.id,
-            message_id: savedMessage.id,
+            message_id: unifiedMessage?.id || savedMessage.id,
             seller_name: seller.name
           },
           priority: 'normal'
