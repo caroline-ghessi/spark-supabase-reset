@@ -4,7 +4,7 @@ import { X, Send, UserPlus, CheckCircle, User, Phone, MessageSquare } from 'luci
 import { Conversation } from '../../types/conversation';
 import { Message } from '../../types/message';
 import { MessageBubble } from './MessageBubble';
-import { TransferModal } from '../modals/TransferModal';
+import { SimpleTransferModal } from '../modals/SimpleTransferModal';
 import { FinalizeModal } from '../modals/FinalizeModal';
 import { Button } from '../ui/button';
 
@@ -58,7 +58,7 @@ export const ChatPanel = ({ conversation, messages, onStatusChange, onClose }: C
     onStatusChange(conversation.id, 'manual');
   };
 
-  const handleTransfer = (sellerId: number, notes: string) => {
+  const handleTransfer = (sellerId: string, notes: string) => {
     console.log('Transferindo para vendedor:', sellerId, 'Notas:', notes);
     onStatusChange(conversation.id, 'seller');
   };
@@ -209,7 +209,7 @@ export const ChatPanel = ({ conversation, messages, onStatusChange, onClose }: C
       </div>
 
       {/* Modals */}
-      <TransferModal
+      <SimpleTransferModal
         isOpen={isTransferModalOpen}
         onClose={() => setIsTransferModalOpen(false)}
         conversation={conversation}

@@ -90,7 +90,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               currentStatus={conversation.status}
               onTakeControl={handleTakeControl}
             />
-            <TransferToSellerButton conversationId={conversation.id} />
+            <TransferToSellerButton 
+              conversationId={conversation.id} 
+              conversation={conversation}
+            />
             <button className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100">
               <MoreVertical className="w-5 h-5" />
             </button>
