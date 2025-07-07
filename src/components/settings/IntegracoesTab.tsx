@@ -1,11 +1,11 @@
 
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Separator } from '../ui/separator';
+import { Loader2 } from 'lucide-react';
 import { 
   Link, 
   CheckCircle, 
@@ -18,55 +18,19 @@ import {
   Globe,
   Settings
 } from 'lucide-react';
+import { useIntegrationsData } from '../../hooks/useIntegrationsData';
 
 interface IntegracoesTabProps {
   onUnsavedChanges: (hasChanges: boolean) => void;
 }
 
 export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
-  const [integracoes, setIntegracoes] = useState({
-    whatsapp: {
-      nome: 'WhatsApp Business API',
-      status: 'conectado',
-      descricao: 'Integração oficial com Meta',
-      config: {
-        token: 'EAAxxxxxxxxxx',
-        phoneNumber: '5511999999999',
-        webhookUrl: 'https://api.empresa.com/webhook'
-      }
-    },
-    wapi: {
-      nome: 'W-API (Vendedores)',
-      status: 'conectado',
-      descricao: 'Conexões individuais dos vendedores',
-      config: {
-        antonio: 'conectado',
-        carla: 'conectado',
-        roberto: 'desconectado'
-      }
-    },
-    dify: {
-      nome: 'Dify Bot',
-      status: 'conectado',
-      descricao: 'Bot de atendimento automatizado',
-      config: {
-        apiKey: 'dify_xxxxxxxxxx',
-        baseUrl: 'https://api.dify.ai',
-        chatflowId: 'flow_123456'
-      }
-    }
-  });
-
-  const [testingConnection, setTestingConnection] = useState<string | null>(null);
-
-  const testConnection = (integration: string) => {
-    setTestingConnection(integration);
-    // Simular teste de conexão
-    setTimeout(() => {
-      setTestingConnection(null);
-      console.log(`Testando conexão com ${integration}`);
-    }, 2000);
-  };
+  const { 
+    integrations, 
+    loading, 
+    testingConnection, 
+    testConnection 
+  } = useIntegrationsData();
 
   const getStatusColor = (status: string) => {
     return status === 'conectado' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
@@ -75,6 +39,23 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
   const getStatusIcon = (status: string) => {
     return status === 'conectado' ? CheckCircle : XCircle;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
+        <span className="ml-2 text-gray-600">Carregando configurações de integrações...</span>
+      </div>
+    );
+  }
+
+  if (!integrations) {
+    return (
+      <div className="text-center text-gray-600">
+        <p>Erro ao carregar dados das integrações.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -141,12 +122,12 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
             <div className="flex items-center space-x-3">
               <MessageSquare className="w-6 h-6 text-green-600" />
               <div>
-                <CardTitle>{integracoes.whatsapp.nome}</CardTitle>
-                <p className="text-sm text-gray-600">{integracoes.whatsapp.descricao}</p>
+                <CardTitle>{integrations.whatsapp.nome}</CardTitle>
+                <p className="text-sm text-gray-600">{integrations.whatsapp.descricao}</p>
               </div>
             </div>
-            <Badge className={getStatusColor(integracoes.whatsapp.status)}>
-              {integracoes.whatsapp.status}
+            <Badge className={getStatusColor(integrations.whatsapp.status)}>
+              {integrations.whatsapp.status}
             </Badge>
           </div>
         </CardHeader>
@@ -157,7 +138,7 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
               <Input 
                 id="whatsapp-token" 
                 type="password" 
-                value={integracoes.whatsapp.config.token}
+                value={integrations.whatsapp.config.token}
                 placeholder="Token da Meta Business"
               />
             </div>
@@ -165,7 +146,7 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
               <Label htmlFor="phone-number">Número do Telefone</Label>
               <Input 
                 id="phone-number" 
-                value={integracoes.whatsapp.config.phoneNumber}
+                value={integrations.whatsapp.config.phoneNumber}
                 placeholder="5511999999999"
               />
             </div>
@@ -176,7 +157,7 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Globe className="w-4 h-4 text-gray-400" />
-              <span className="text-sm">Webhook URL: {integracoes.whatsapp.config.webhookUrl}</span>
+              <span className="text-sm">Webhook URL: {integrations.whatsapp.config.webhookUrl}</span>
             </div>
             <Button 
               variant="outline" 
@@ -201,18 +182,18 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
             <div className="flex items-center space-x-3">
               <Phone className="w-6 h-6 text-blue-600" />
               <div>
-                <CardTitle>{integracoes.wapi.nome}</CardTitle>
-                <p className="text-sm text-gray-600">{integracoes.wapi.descricao}</p>
+                <CardTitle>{integrations.wapi.nome}</CardTitle>
+                <p className="text-sm text-gray-600">{integrations.wapi.descricao}</p>
               </div>
             </div>
-            <Badge className={getStatusColor(integracoes.wapi.status)}>
-              {integracoes.wapi.status}
+            <Badge className={getStatusColor(integrations.wapi.status)}>
+              {integrations.wapi.status}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
-            {Object.entries(integracoes.wapi.config).map(([vendedor, status]) => {
+            {Object.entries(integrations.wapi.config).map(([vendedor, status]) => {
               const StatusIcon = getStatusIcon(status as string);
               return (
                 <div key={vendedor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -242,12 +223,12 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
             <div className="flex items-center space-x-3">
               <Bot className="w-6 h-6 text-purple-600" />
               <div>
-                <CardTitle>{integracoes.dify.nome}</CardTitle>
-                <p className="text-sm text-gray-600">{integracoes.dify.descricao}</p>
+                <CardTitle>{integrations.dify.nome}</CardTitle>
+                <p className="text-sm text-gray-600">{integrations.dify.descricao}</p>
               </div>
             </div>
-            <Badge className={getStatusColor(integracoes.dify.status)}>
-              {integracoes.dify.status}
+            <Badge className={getStatusColor(integrations.dify.status)}>
+              {integrations.dify.status}
             </Badge>
           </div>
         </CardHeader>
@@ -258,7 +239,7 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
               <Input 
                 id="dify-api-key" 
                 type="password" 
-                value={integracoes.dify.config.apiKey}
+                value={integrations.dify.config.apiKey}
                 placeholder="dify_xxxxxxxxxx"
               />
             </div>
@@ -266,7 +247,7 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
               <Label htmlFor="dify-base-url">Base URL</Label>
               <Input 
                 id="dify-base-url" 
-                value={integracoes.dify.config.baseUrl}
+                value={integrations.dify.config.baseUrl}
                 placeholder="https://api.dify.ai"
               />
             </div>
@@ -276,7 +257,7 @@ export const IntegracoesTab = ({ onUnsavedChanges }: IntegracoesTabProps) => {
             <Label htmlFor="chatflow-id">Chatflow ID</Label>
             <Input 
               id="chatflow-id" 
-              value={integracoes.dify.config.chatflowId}
+              value={integrations.dify.config.chatflowId}
               placeholder="flow_123456"
             />
           </div>
