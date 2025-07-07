@@ -1255,6 +1255,16 @@ export type Database = {
         Args: { message_text: string }
         Returns: Json
       }
+      check_message_sync_health: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          status: string
+          vendor_messages_count: number
+          unified_messages_count: number
+          missing_messages_count: number
+          last_check: string
+        }[]
+      }
       create_admin_user: {
         Args: { admin_id: string; admin_email: string; admin_name: string }
         Returns: boolean
