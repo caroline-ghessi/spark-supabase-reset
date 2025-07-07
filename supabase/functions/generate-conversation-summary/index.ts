@@ -35,6 +35,8 @@ serve(async (req) => {
       throw new Error('Parâmetro obrigatório: conversation_id')
     }
 
+    console.log(`🔄 [${requestId}] Buscando conversa: ${conversation_id}`)
+
     // Buscar conversa
     const { data: conversation, error: convErr } = await supabase
       .from('conversations')
@@ -42,11 +44,17 @@ serve(async (req) => {
       .eq('id', conversation_id)
       .single()
 
-    if (convErr || !conversation) {
+    if (convErr) {
+      console.log(`❌ [${requestId}] Erro ao buscar conversa:`, convErr)
+      throw new Error(`Conversa não encontrada: ${convErr.message}`)
+    }
+
+    if (!conversation) {
+      console.log(`❌ [${requestId}] Conversa não encontrada: ${conversation_id}`)
       throw new Error('Conversa não encontrada')
     }
 
-    console.log(`🔄 [${requestId}] Gerando resumo para conversa ${conversation_id}`)
+    console.log(`✅ [${requestId}] Conversa encontrada: ${conversation.client_name || conversation.client_phone}`)
 
     // Buscar histórico completo de mensagens da conversa
     const { data: messages, error: messagesErr } = await supabase
@@ -56,25 +64,81 @@ serve(async (req) => {
       .order('created_at', { ascending: true })
 
     if (messagesErr) {
-      console.log(`⚠️ [${requestId}] Erro ao buscar mensagens:`, messagesErr)
+      console.log(`❌ [${requestId}] Erro ao buscar mensagens:`, messagesErr)
+      const fallbackSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}
+**Telefone:** ${conversation.client_phone}
+**Temperatura:** ${conversation.lead_temperature === 'hot' ? 'Cliente Quente 🔥' : conversation.lead_temperature === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
+**Valor Potencial:** R$ ${conversation.potential_value || 'Não informado'}
+**Fonte:** ${conversation.source || 'WhatsApp'}
+
+_Erro ao acessar histórico de mensagens. Resumo básico disponível._`
+      
       return new Response(JSON.stringify({ 
-        summary: `**Cliente:** ${conversation.client_name || conversation.client_phone}\n**Temperatura:** ${conversation.lead_temperature}\n\n_Resumo básico - não foi possível acessar histórico de mensagens._`
+        success: false,
+        summary: fallbackSummary,
+        error: 'messages_fetch_error',
+        details: messagesErr.message
       }), { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       })
     }
 
-    // Gerar resumo com IA se OpenAI está configurado e há mensagens
-    let aiSummary = ''
-    if (openAIApiKey && messages && messages.length > 0) {
-      try {
-        console.log(`🤖 [${requestId}] Gerando resumo da conversa com IA...`)
-        
-        const conversationHistory = messages.map(msg => 
-          `[${msg.sender_type}] ${msg.sender_name}: ${msg.content}`
-        ).join('\n')
+    console.log(`✅ [${requestId}] ${messages?.length || 0} mensagens encontradas`)
 
-        const summaryPrompt = `Você é um especialista em qualificação de leads e vendas. Analise esta conversa e extraia TODAS as informações comerciais relevantes para o vendedor assumir o atendimento de forma eficaz.
+    // Verificar se OpenAI está configurado
+    if (!openAIApiKey) {
+      console.log(`⚠️ [${requestId}] OpenAI API Key não configurada`)
+      const fallbackSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}
+**Telefone:** ${conversation.client_phone}
+**Temperatura:** ${conversation.lead_temperature === 'hot' ? 'Cliente Quente 🔥' : conversation.lead_temperature === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
+**Valor Potencial:** R$ ${conversation.potential_value || 'Não informado'}
+**Fonte:** ${conversation.source || 'WhatsApp'}
+
+_IA não configurada. Configure o OPENAI_API_KEY nos secrets do Supabase._`
+      
+      return new Response(JSON.stringify({
+        success: false,
+        summary: fallbackSummary,
+        error: 'openai_not_configured',
+        details: 'OPENAI_API_KEY não está configurado'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Verificar se há mensagens
+    if (!messages || messages.length === 0) {
+      console.log(`⚠️ [${requestId}] Nenhuma mensagem encontrada`)
+      const fallbackSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}
+**Telefone:** ${conversation.client_phone}
+**Temperatura:** ${conversation.lead_temperature === 'hot' ? 'Cliente Quente 🔥' : conversation.lead_temperature === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
+**Valor Potencial:** R$ ${conversation.potential_value || 'Não informado'}
+**Fonte:** ${conversation.source || 'WhatsApp'}
+
+_Nenhuma mensagem encontrada na conversa._`
+      
+      return new Response(JSON.stringify({
+        success: false,
+        summary: fallbackSummary,
+        error: 'no_messages',
+        details: 'Conversa não possui mensagens'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Gerar resumo com IA
+    let aiSummary = ''
+    try {
+      console.log(`🤖 [${requestId}] Gerando resumo da conversa com IA...`)
+      
+      const conversationHistory = messages.map(msg => 
+        `[${msg.sender_type}] ${msg.sender_name}: ${msg.content || '[Mensagem sem texto]'}`
+      ).join('\n')
+
+      console.log(`📝 [${requestId}] Histórico da conversa (${conversationHistory.length} chars):`, conversationHistory.substring(0, 200) + '...')
+
+      const summaryPrompt = `Você é um especialista em qualificação de leads e vendas. Analise esta conversa e extraia TODAS as informações comerciais relevantes para o vendedor assumir o atendimento de forma eficaz.
 
 DADOS DO CLIENTE:
 - Nome: ${conversation.client_name || 'Não informado'}
@@ -152,19 +216,34 @@ FORMATO: Use tópicos claros e diretos. Se alguma informação NÃO foi menciona
         if (aiResponse.ok) {
           const aiData = await aiResponse.json()
           aiSummary = aiData.choices[0].message.content
-          console.log(`✅ [${requestId}] Resumo IA gerado com sucesso`)
+          console.log(`✅ [${requestId}] Resumo IA gerado com sucesso (${aiSummary.length} chars)`)
         } else {
-          console.log(`⚠️ [${requestId}] Falha ao gerar resumo IA:`, await aiResponse.text())
-          aiSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}\n**Temperatura:** ${conversation.lead_temperature}\n\n_Falha ao gerar resumo detalhado._`
+          const errorText = await aiResponse.text()
+          console.log(`❌ [${requestId}] Falha na API OpenAI (${aiResponse.status}):`, errorText)
+          throw new Error(`OpenAI API Error: ${aiResponse.status} - ${errorText}`)
         }
       } catch (aiError) {
-        console.log(`⚠️ [${requestId}] Erro na geração do resumo IA:`, aiError)
-        aiSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}\n**Temperatura:** ${conversation.lead_temperature}\n\n_Erro ao gerar resumo detalhado._`
+        console.log(`❌ [${requestId}] Erro na geração do resumo IA:`, aiError)
+        const fallbackSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}
+**Telefone:** ${conversation.client_phone}
+**Temperatura:** ${conversation.lead_temperature === 'hot' ? 'Cliente Quente 🔥' : conversation.lead_temperature === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
+**Valor Potencial:** R$ ${conversation.potential_value || 'Não informado'}
+**Fonte:** ${conversation.source || 'WhatsApp'}
+
+_Erro na geração automática do resumo. Mensagens disponíveis: ${messages.length}_
+
+**Primeiras mensagens:**
+${messages.slice(0, 3).map(msg => `• ${msg.sender_name}: ${msg.content || '[Arquivo/Mídia]'}`).join('\n')}`
+        
+        return new Response(JSON.stringify({
+          success: false,
+          summary: fallbackSummary,
+          error: 'ai_generation_failed',
+          details: aiError.message
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
       }
-    } else {
-      // Resumo básico se não há IA configurada
-      aiSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}\n**Telefone:** ${conversation.client_phone}\n**Temperatura:** ${conversation.lead_temperature}\n**Valor Potencial:** R$ ${conversation.potential_value || 'Não informado'}\n\n_Resumo básico - IA não configurada._`
-    }
 
     console.log(`✅ [${requestId}] Resumo gerado com sucesso`)
 

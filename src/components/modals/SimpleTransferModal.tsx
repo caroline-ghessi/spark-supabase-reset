@@ -81,33 +81,61 @@ export const SimpleTransferModal = ({ isOpen, onClose, conversation, onTransfer 
   // Gerar resumo da conversa com IA
   useEffect(() => {
     const generateSummary = async () => {
-      if (!isOpen || !conversation?.conversationId) return;
+      if (!isOpen || !conversation?.conversationId) {
+        console.log('⚠️ Modal não aberto ou conversa sem ID:', { isOpen, conversationId: conversation?.conversationId });
+        return;
+      }
       
       setSummaryLoading(true);
       try {
+        console.log(`🔄 Gerando resumo para conversa: ${conversation.conversationId}`);
+        
         const { data, error } = await supabase.functions.invoke('generate-conversation-summary', {
           body: {
             conversation_id: conversation.conversationId
           }
         });
 
-        if (error) throw error;
+        console.log('📋 Resposta da função:', { data, error });
+
+        if (error) {
+          console.error('❌ Erro na função:', error);
+          throw error;
+        }
         
-        setConversationSummary(data.summary || 'Resumo não disponível');
+        if (data?.success === false) {
+          console.warn('⚠️ Função retornou erro:', data);
+          setConversationSummary(data.summary || 'Resumo não disponível');
+          toast({
+            title: "Aviso",
+            description: `Resumo básico gerado: ${data.error === 'openai_not_configured' ? 'IA não configurada' : 'Falha na geração automática'}`,
+            variant: "default",
+          });
+        } else {
+          setConversationSummary(data.summary || 'Resumo não disponível');
+          console.log('✅ Resumo gerado com sucesso');
+        }
       } catch (error) {
-        console.error('Erro ao gerar resumo:', error);
-        setConversationSummary(`**Cliente:** ${conversation.clientName} (${conversation.clientPhone})
+        console.error('❌ Erro ao gerar resumo:', error);
+        const fallbackSummary = `**Cliente:** ${conversation.clientName} (${conversation.clientPhone})
 **Classificação:** ${conversation.leadType === 'hot' ? 'Cliente Quente 🔥' : conversation.leadType === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
 **Status:** ${conversation.status}
 
-_Resumo detalhado não disponível._`);
+_Erro ao gerar resumo detalhado. Verifique os logs da Edge Function._`;
+        
+        setConversationSummary(fallbackSummary);
+        toast({
+          title: "Erro",
+          description: "Falha ao gerar resumo detalhado. Resumo básico disponível.",
+          variant: "destructive",
+        });
       } finally {
         setSummaryLoading(false);
       }
     };
 
     generateSummary();
-  }, [isOpen, conversation]);
+  }, [isOpen, conversation, toast]);
 
   const handleTransfer = async () => {
     if (!selectedSeller) return;
