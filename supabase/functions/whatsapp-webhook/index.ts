@@ -269,26 +269,7 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
 
       console.log(`✅ [${requestId}] Mensagem do cliente salva com ID:`, savedMessage.id)
 
-      // 4. Verificar credenciais antes de chamar Dify
-      if (!credentials.difyApiKey) {
-        console.error(`❌ [${requestId}] DIFY_API_KEY não configurada! Pulando chamada para Dify.`)
-        
-        // Criar notificação de erro
-        await supabase
-          .from('notifications')
-          .insert({
-            type: 'integration_error',
-            title: 'Erro na Integração Dify',
-            message: 'DIFY_API_KEY não está configurada. Configure nas variáveis de ambiente.',
-            priority: 'high',
-            context: {
-              conversation_id: conversation.id,
-              error: 'missing_dify_api_key'
-            }
-          })
-        
-        continue
-      }
+      // 4. Chamar Dify para gerar resposta (a validação da API key é feita dentro da função callDifyAPI)
 
       // 5. Chamar Dify para gerar resposta
       console.log(`🤖 [${requestId}] Chamando Dify para gerar resposta...`)
