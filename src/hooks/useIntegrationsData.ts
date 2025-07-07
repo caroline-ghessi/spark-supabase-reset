@@ -59,8 +59,9 @@ export const useIntegrationsData = () => {
       const wapiConfig: Record<string, string> = {};
       if (sellers) {
         sellers.forEach(seller => {
-          const name = seller.name.toLowerCase().replace(/\s+/g, '');
-          wapiConfig[name] = seller.whapi_status || 'desconectado';
+          const name = seller.name; // Manter nome original
+          const status = seller.whapi_status === 'active' ? 'conectado' : 'desconectado';
+          wapiConfig[name] = status;
         });
       }
 
@@ -78,7 +79,7 @@ export const useIntegrationsData = () => {
         },
         wapi: {
           nome: 'W-API (Vendedores)',
-          status: Object.values(wapiConfig).some(status => status === 'active') ? 'conectado' : 'desconectado',
+          status: Object.values(wapiConfig).some(status => status === 'conectado') ? 'conectado' : 'desconectado',
           descricao: 'Conexões individuais dos vendedores',
           config: wapiConfig
         },
