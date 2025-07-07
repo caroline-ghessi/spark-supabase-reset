@@ -31,12 +31,14 @@ serve(async (req) => {
     const difyBaseUrl = Deno.env.get('DIFY_BASE_URL') || 'https://api.dify.ai'
     const whatsappToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN')
     const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
     
     console.log(`🔍 [${requestId}] Verificando credenciais:`)
     console.log(`   - Dify API Key: ${difyApiKey ? '✅ Configurada' : '❌ Ausente'}`)
     console.log(`   - Dify Base URL: ${difyBaseUrl}`)
     console.log(`   - WhatsApp Token: ${whatsappToken ? '✅ Configurado' : '❌ Ausente'}`)
     console.log(`   - Phone Number ID: ${phoneNumberId ? '✅ Configurado' : '❌ Ausente'}`)
+    console.log(`   - OpenAI API Key: ${openAIApiKey ? '✅ Configurado' : '❌ Ausente'}`)
 
     // GET - Verificação do webhook
     if (req.method === 'GET') {
@@ -269,7 +271,11 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
 
       console.log(`✅ [${requestId}] Mensagem do cliente salva com ID:`, savedMessage.id)
 
-      // 4. Chamar Dify para gerar resposta (a validação da API key é feita dentro da função callDifyAPI)
+      // 4. Verificar se devemos chamar Dify ou só salvar para resumo
+      if (!difyApiKey) {
+        console.log(`⚠️ [${requestId}] Dify API Key não configurada - apenas salvando mensagem`)
+        return
+      }
 
       // 5. Chamar Dify para gerar resposta
       console.log(`🤖 [${requestId}] Chamando Dify para gerar resposta...`)
@@ -434,6 +440,11 @@ async function processMessages(supabase: any, messageData: any, requestId: strin
 async function callDifyAPI(message: string, conversationId: string | null, requestId: string, credentials: any) {
   try {
     const { difyApiKey, difyBaseUrl } = credentials
+    
+    if (!difyApiKey) {
+      console.log(`❌ [${requestId}] Dify API Key não configurada`)
+      return null
+    }
     
     console.log(`🤖 [${requestId}] Configurações Dify:`)
     console.log(`   - Base URL: ${difyBaseUrl}`)
