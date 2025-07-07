@@ -309,7 +309,7 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
       return
     }
 
-    // TAMBÉM salvar na tabela messages padrão para unificar o sistema
+    // SEMPRE salvar na tabela messages padrão para unificar o sistema
     const unifiedMessageData = {
       conversation_id: conversationId,
       sender_type: message.from_me ? 'seller' : 'client',
@@ -325,48 +325,67 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
         whapi_message_id: message.id,
         vendor_message_id: savedMessage.id,
         seller_id: seller.id,
-        original_timestamp: messageData.sent_at
+        original_timestamp: messageData.sent_at,
+        source: 'whapi'
       }
     }
 
-    // Tentar salvar na tabela messages unificada
-    const { data: unifiedMessage, error: unifiedError } = await supabase
-      .from('messages')
-      .upsert(unifiedMessageData, { onConflict: 'whatsapp_message_id' })
-      .select()
-      .single()
+    // Salvar na tabela messages unificada com retry em caso de erro
+    let unifiedMessage = null
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .upsert(unifiedMessageData, { onConflict: 'whatsapp_message_id' })
+          .select()
+          .single()
 
-    if (unifiedError) {
-      console.error(`❌ [${requestId}] Erro ao salvar mensagem na tabela unificada:`, unifiedError)
-    } else {
-      console.log(`✅ [${requestId}] Mensagem também salva na tabela unificada: ${unifiedMessage.id}`)
+        if (error) throw error
+        
+        unifiedMessage = data
+        console.log(`✅ [${requestId}] Mensagem salva na tabela unificada: ${unifiedMessage.id}`)
+        break
+      } catch (unifiedError) {
+        console.error(`❌ [${requestId}] Tentativa ${attempt}/3 - Erro ao salvar na tabela unificada:`, unifiedError)
+        if (attempt === 3) {
+          // Se falhou todas as tentativas, registrar na tabela de sincronização pendente
+          console.error(`❌ [${requestId}] CRÍTICO: Mensagem ${message.id} não foi salva na tabela unificada após 3 tentativas`)
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt)) // Backoff exponencial
+      }
     }
 
-    // Atualizar conversa
+    // Atualizar conversa com informações mais detalhadas
     await supabase
       .from('conversations')
       .update({
         last_message_at: messageData.sent_at,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        status: message.from_me ? 'manual' : 'manual' // Manter como manual para conversas whapi
       })
       .eq('id', conversationId)
 
     // Criar notificação se for mensagem do cliente
     if (!message.from_me) {
-      await supabase
-        .from('notifications')
-        .insert({
-          type: 'new_message',
-          title: 'Nova mensagem do cliente',
-          message: `${message.contact?.name || message.from_name || clientPhone}: ${messageData.text_content?.substring(0, 100) || '[Mídia]'}`,
-          context: {
-            conversation_id: conversationId,
-            seller_id: seller.id,
-            message_id: unifiedMessage?.id || savedMessage.id,
-            seller_name: seller.name
-          },
-          priority: 'normal'
-        })
+      try {
+        await supabase
+          .from('notifications')
+          .insert({
+            type: 'new_message',
+            title: 'Nova mensagem do cliente',
+            message: `${message.contact?.name || message.from_name || clientPhone}: ${messageData.text_content?.substring(0, 100) || '[Mídia]'}`,
+            context: {
+              conversation_id: conversationId,
+              seller_id: seller.id,
+              message_id: unifiedMessage?.id || savedMessage.id,
+              seller_name: seller.name,
+              source: 'whapi'
+            },
+            priority: 'normal'
+          })
+      } catch (notificationError) {
+        console.error(`❌ [${requestId}] Erro ao criar notificação:`, notificationError)
+      }
     }
 
     console.log(`✅ [${requestId}] Mensagem processada para ${seller.name}: ${savedMessage.id}`)
