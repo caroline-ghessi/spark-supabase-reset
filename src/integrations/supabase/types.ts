@@ -1298,6 +1298,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_message_sync_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_conversations: number
+          conversations_with_messages: number
+          conversations_without_messages: number
+          total_messages: number
+          total_vendor_messages: number
+        }[]
+      }
       get_messages: {
         Args: { conv_id: string }
         Returns: {
@@ -1327,6 +1337,17 @@ export type Database = {
       link_user_to_seller: {
         Args: { user_email: string; seller_phone: string }
         Returns: boolean
+      }
+      test_conversations_without_messages: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          conversation_id: string
+          client_name: string
+          client_phone: string
+          status: string
+          created_at: string
+          message_count: number
+        }[]
       }
       test_rls_policies: {
         Args: Record<PropertyKey, never>
