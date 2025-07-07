@@ -218,6 +218,66 @@ export const useAlertsSystem = () => {
     }
   };
 
+  const updateEscalationContact = async (id: string, contact: Omit<EscalationContact, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('escalation_contacts')
+        .update(contact)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setEscalationContacts(prev => 
+        prev.map(c => c.id === id ? data : c)
+      );
+
+      toast({
+        title: "Sucesso",
+        description: "Contato atualizado com sucesso",
+        className: "bg-green-500 text-white",
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Error updating escalation contact:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar contato",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const deleteEscalationContact = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('escalation_contacts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setEscalationContacts(prev => prev.filter(c => c.id !== id));
+
+      toast({
+        title: "Sucesso",
+        description: "Contato removido com sucesso",
+        className: "bg-green-500 text-white",
+      });
+    } catch (error) {
+      console.error('Error deleting escalation contact:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao remover contato",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     loadAll();
   }, []);
@@ -230,6 +290,8 @@ export const useAlertsSystem = () => {
     loading,
     loadAll,
     toggleAlertType,
-    addEscalationContact
+    addEscalationContact,
+    updateEscalationContact,
+    deleteEscalationContact
   };
 };

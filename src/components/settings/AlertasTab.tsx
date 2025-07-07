@@ -7,7 +7,7 @@ import { Switch } from '../ui/switch';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Separator } from '../ui/separator';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Edit, Trash2 } from 'lucide-react';
 import { 
   Bell, 
   AlertTriangle, 
@@ -18,7 +18,8 @@ import {
   Mail,
   MessageSquare
 } from 'lucide-react';
-import { useAlertsSystem } from '../../hooks/useAlertsSystem';
+import { useAlertsSystem, EscalationContact } from '../../hooks/useAlertsSystem';
+import { EscalationContactModal } from './EscalationContactModal';
 
 interface AlertasTabProps {
   onUnsavedChanges: (hasChanges: boolean) => void;
@@ -29,12 +30,45 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
     alertTypes, 
     escalationContacts, 
     loading, 
-    toggleAlertType 
+    toggleAlertType,
+    addEscalationContact,
+    updateEscalationContact,
+    deleteEscalationContact
   } = useAlertsSystem();
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<EscalationContact | null>(null);
 
   const handleToggleAlert = async (alertId: string, isActive: boolean) => {
     await toggleAlertType(alertId, isActive);
     onUnsavedChanges(true);
+  };
+
+  const handleSaveContact = async (contactData: Omit<EscalationContact, 'id' | 'created_at' | 'updated_at'>) => {
+    if (editingContact) {
+      await updateEscalationContact(editingContact.id, contactData);
+    } else {
+      await addEscalationContact(contactData);
+    }
+    setEditingContact(null);
+    onUnsavedChanges(true);
+  };
+
+  const handleEditContact = (contact: EscalationContact) => {
+    setEditingContact(contact);
+    setModalOpen(true);
+  };
+
+  const handleDeleteContact = async (contactId: string) => {
+    if (confirm('Tem certeza que deseja remover este contato?')) {
+      await deleteEscalationContact(contactId);
+      onUnsavedChanges(true);
+    }
+  };
+
+  const handleAddContact = () => {
+    setEditingContact(null);
+    setModalOpen(true);
   };
 
   const getPrioridadeColor = (prioridade: string) => {
@@ -196,9 +230,25 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
                     <h4 className="font-medium text-gray-900">{contato.name}</h4>
                     <p className="text-sm text-gray-600">{contato.role}</p>
                   </div>
-                  <Badge variant="outline">
-                    Nível {contato.escalation_level}
-                  </Badge>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline">
+                      Nível {contato.escalation_level}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditContact(contato)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteContact(contato.id)}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="space-y-2 text-sm">
@@ -218,7 +268,7 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
               </div>
             ))}
             
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={handleAddContact}>
               Adicionar Novo Contato
             </Button>
           </CardContent>
@@ -270,8 +320,15 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+      <EscalationContactModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        contact={editingContact}
+        onSave={handleSaveContact}
+      />
     </div>
   );
 };
