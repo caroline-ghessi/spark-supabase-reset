@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -16,59 +16,101 @@ import {
   Activity,
   CheckCircle,
   AlertCircle,
-  History
+  History,
+  Loader2
 } from 'lucide-react';
-import { mockAgentesIA, AgenteIA } from '../../data/configData';
+import { useAIAgents, AIAgent } from '../../hooks/useAIAgents';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface IAPromptsTabProps {
   onUnsavedChanges: (hasChanges: boolean) => void;
 }
 
 export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
-  const [agentes, setAgentes] = useState(mockAgentesIA);
-  const [selectedAgente, setSelectedAgente] = useState<AgenteIA | null>(null);
+  const { agents, loading, loadAgents, updateAgentStatus } = useAIAgents();
+  const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editedPrompt, setEditedPrompt] = useState('');
   const [isTestingPrompt, setIsTestingPrompt] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
-  const handleEditPrompt = (agente: AgenteIA) => {
-    setSelectedAgente(agente);
-    setEditedPrompt(agente.promptAtual);
+  const handleEditPrompt = (agent: AIAgent) => {
+    setSelectedAgent(agent);
+    setEditedPrompt(agent.prompt);
     setIsEditModalOpen(true);
   };
 
-  const handleSavePrompt = () => {
-    if (selectedAgente) {
-      const updatedAgentes = agentes.map(agente =>
-        agente.id === selectedAgente.id
-          ? { ...agente, promptAtual: editedPrompt }
-          : agente
-      );
-      setAgentes(updatedAgentes);
+  const handleSavePrompt = async () => {
+    if (!selectedAgent) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('ai_agents_config')
+        .update({ 
+          prompt: editedPrompt, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', selectedAgent.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Prompt atualizado com sucesso",
+        className: "bg-green-500 text-white",
+      });
+
       setIsEditModalOpen(false);
-      onUnsavedChanges(true);
+      onUnsavedChanges(false);
+      await loadAgents();
+    } catch (error) {
+      console.error('Erro ao salvar prompt:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao salvar prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleTestPrompt = () => {
     setIsTestingPrompt(true);
-    // Simular teste do prompt
     setTimeout(() => {
       setIsTestingPrompt(false);
-      console.log('Teste do prompt realizado');
+      toast({
+        title: "Teste Concluído",
+        description: "Prompt testado com sucesso",
+        className: "bg-blue-500 text-white",
+      });
     }, 2000);
   };
 
   const getStatusColor = (status: string) => {
-    return status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+    return status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
   };
 
-  const getPerformanceColor = (taxa: string) => {
-    const percentage = parseInt(taxa.replace('%', ''));
-    if (percentage >= 90) return 'text-green-600';
-    if (percentage >= 80) return 'text-orange-600';
-    return 'text-red-600';
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('pt-BR');
+    } catch {
+      return 'N/A';
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
+        <span className="ml-2 text-gray-600">Carregando agentes de IA...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -86,7 +128,7 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
               <div>
                 <p className="text-sm text-gray-600">Agentes Ativos</p>
                 <p className="text-xl font-bold">
-                  {agentes.filter(a => a.status === 'ativo').length}
+                  {agents.filter(a => a.status === 'active').length}
                 </p>
               </div>
             </div>
@@ -98,9 +140,9 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
             <div className="flex items-center space-x-2">
               <Activity className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-gray-600">Taxa Acerto Média</p>
+                <p className="text-sm text-gray-600">Total de Agentes</p>
                 <p className="text-xl font-bold">
-                  {Math.round(agentes.reduce((acc, a) => acc + parseInt(a.taxaAcerto.replace('%', '')), 0) / agentes.length)}%
+                  {agents.length}
                 </p>
               </div>
             </div>
@@ -112,9 +154,9 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-purple-600" />
               <div>
-                <p className="text-sm text-gray-600">Testes Realizados</p>
+                <p className="text-sm text-gray-600">Agentes Configurados</p>
                 <p className="text-xl font-bold">
-                  {agentes.reduce((acc, a) => acc + a.testesRealizados, 0)}
+                  {agents.filter(a => a.prompt && a.prompt.length > 10).length}
                 </p>
               </div>
             </div>
@@ -127,7 +169,9 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
               <RefreshCw className="h-5 w-5 text-orange-600" />
               <div>
                 <p className="text-sm text-gray-600">Última Atualização</p>
-                <p className="text-sm font-bold">Hoje</p>
+                <p className="text-sm font-bold">
+                  {agents.length > 0 ? formatDate(Math.max(...agents.map(a => new Date(a.updated_at).getTime())).toString()) : 'N/A'}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -136,47 +180,31 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
 
       {/* Agentes List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {agentes.map((agente) => (
-          <Card key={agente.id} className="relative">
+        {agents.map((agent) => (
+          <Card key={agent.id} className="relative">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3">
                   <Bot className="w-8 h-8 text-blue-600" />
                   <div>
-                    <CardTitle className="text-lg">{agente.nome}</CardTitle>
-                    <p className="text-sm text-gray-600">{agente.descricao}</p>
+                    <CardTitle className="text-lg">{agent.name}</CardTitle>
+                    <p className="text-sm text-gray-600">{agent.description}</p>
                   </div>
                 </div>
-                <Badge className={getStatusColor(agente.status)}>
-                  {agente.status}
+                <Badge className={getStatusColor(agent.status)}>
+                  {agent.status === 'active' ? 'Ativo' : 'Inativo'}
                 </Badge>
               </div>
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {/* Performance Metrics */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Taxa de Acerto</p>
-                  <p className={`text-lg font-bold ${getPerformanceColor(agente.taxaAcerto)}`}>
-                    {agente.taxaAcerto}
-                  </p>
-                </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Testes</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {agente.testesRealizados}
-                  </p>
-                </div>
-              </div>
-
               {/* Version Info */}
               <div className="flex justify-between items-center text-sm">
                 <div className="flex items-center space-x-2">
                   <History className="w-4 h-4 text-gray-400" />
-                  <span>v{agente.versao}</span>
+                  <span>v{agent.version}</span>
                 </div>
-                <span className="text-gray-500">{agente.ultimaAtualizacao}</span>
+                <span className="text-gray-500">{formatDate(agent.updated_at)}</span>
               </div>
 
               <Separator />
@@ -186,7 +214,7 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
                 <p className="text-sm font-medium text-gray-700 mb-2">Preview do Prompt:</p>
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="text-xs text-gray-600 font-mono leading-relaxed">
-                    {agente.promptAtual.substring(0, 150)}...
+                    {agent.prompt ? agent.prompt.substring(0, 150) + '...' : 'Prompt não configurado'}
                   </p>
                 </div>
               </div>
@@ -196,12 +224,17 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleEditPrompt(agente)}
+                  onClick={() => handleEditPrompt(agent)}
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
                   Editar Prompt
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleTestPrompt}
+                  disabled={!agent.prompt}
+                >
                   <Play className="w-4 h-4 mr-2" />
                   Testar
                 </Button>
@@ -215,10 +248,10 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="max-w-6xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>Editor de Prompt: {selectedAgente?.nome}</DialogTitle>
+            <DialogTitle>Editor de Prompt: {selectedAgent?.name}</DialogTitle>
           </DialogHeader>
           
-          {selectedAgente && (
+          {selectedAgent && (
             <Tabs defaultValue="editor" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="editor">Editor</TabsTrigger>
@@ -317,9 +350,22 @@ export const IAPromptsTab = ({ onUnsavedChanges }: IAPromptsTabProps) => {
             <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSavePrompt} className="bg-orange-500 hover:bg-orange-600">
-              <Save className="w-4 h-4 mr-2" />
-              Salvar Prompt
+            <Button 
+              onClick={handleSavePrompt} 
+              className="bg-orange-500 hover:bg-orange-600"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar Prompt
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
