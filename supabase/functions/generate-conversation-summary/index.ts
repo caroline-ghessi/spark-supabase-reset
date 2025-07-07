@@ -85,20 +85,95 @@ _Erro ao acessar histórico de mensagens. Resumo básico disponível._`
 
     console.log(`✅ [${requestId}] ${messages?.length || 0} mensagens encontradas`)
 
-    // Verificar se OpenAI está configurado
-    if (!openAIApiKey) {
-      console.log(`⚠️ [${requestId}] OpenAI API Key não configurada`)
-      const fallbackSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}
+    // Gerar resumo baseado na quantidade e tipo de mensagens
+    console.log(`📊 [${requestId}] Analisando ${messages?.length || 0} mensagens para determinar tipo de resumo`)
+    
+    const messageCount = messages?.length || 0
+    const hasClientMessages = messages?.some(m => m.sender_type === 'client') || false
+    const hasBotMessages = messages?.some(m => m.sender_type === 'bot') || false
+    
+    console.log(`🔍 [${requestId}] Análise de mensagens:`, {
+      total: messageCount,
+      hasClient: hasClientMessages,
+      hasBot: hasBotMessages,
+      conversationStatus: conversation.status
+    })
+
+    // Função para gerar resumo básico
+    const generateBasicSummary = (reason: string, additionalInfo: string = '') => {
+      const temperature = conversation.lead_temperature === 'hot' ? 'Cliente Quente 🔥' : 
+                         conversation.lead_temperature === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'
+      
+      let summary = `**Cliente:** ${conversation.client_name || conversation.client_phone}
 **Telefone:** ${conversation.client_phone}
-**Temperatura:** ${conversation.lead_temperature === 'hot' ? 'Cliente Quente 🔥' : conversation.lead_temperature === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
+**Temperatura:** ${temperature}
 **Valor Potencial:** R$ ${conversation.potential_value || 'Não informado'}
 **Fonte:** ${conversation.source || 'WhatsApp'}
+**Status:** ${conversation.status}
 
-_IA não configurada. Configure o OPENAI_API_KEY nos secrets do Supabase._`
+${additionalInfo}`
+
+      if (messageCount > 0) {
+        const recentMessages = messages.slice(-3).map(msg => 
+          `• ${msg.sender_name}: ${msg.content || '[Arquivo/Mídia]'}`
+        ).join('\n')
+        
+        summary += `\n\n**Últimas mensagens:**\n${recentMessages}`
+      }
+
+      return summary
+    }
+
+    // 1. Conversa sem mensagens ou muito poucas
+    if (messageCount === 0) {
+      console.log(`⚠️ [${requestId}] Conversa sem mensagens`)
+      const summary = generateBasicSummary('no_messages', '_Conversa criada mas sem mensagens trocadas._')
       
       return new Response(JSON.stringify({
         success: false,
-        summary: fallbackSummary,
+        summary,
+        error: 'no_messages',
+        details: 'Conversa não possui mensagens'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // 2. Conversas com poucas mensagens (1-2)
+    if (messageCount <= 2) {
+      console.log(`⚠️ [${requestId}] Conversa com poucas mensagens (${messageCount})`)
+      const summary = generateBasicSummary('few_messages', `_Conversa inicial com apenas ${messageCount} mensagem(ns). Resumo detalhado não disponível._`)
+      
+      return new Response(JSON.stringify({
+        success: false,
+        summary,
+        error: 'insufficient_messages',
+        details: `Conversa possui apenas ${messageCount} mensagem(ns) - insuficiente para análise detalhada`
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // 3. Conversas com mensagens suficientes mas sem OpenAI configurado
+    if (!openAIApiKey) {
+      console.log(`⚠️ [${requestId}] OpenAI não configurado - usando resumo básico melhorado`)
+      let summary = generateBasicSummary('openai_not_configured', '_IA não configurada. Configure o OPENAI_API_KEY nos secrets do Supabase._')
+      
+      // Adicionar análise básica manual para conversas com mais mensagens
+      if (messageCount >= 3) {
+        const clientMessages = messages.filter(m => m.sender_type === 'client')
+        const botMessages = messages.filter(m => m.sender_type === 'bot')
+        
+        summary += `\n\n**Análise Básica:**
+• Total de mensagens: ${messageCount}
+• Mensagens do cliente: ${clientMessages.length}
+• Respostas do bot: ${botMessages.length}
+• Duração da conversa: ${Math.round((new Date(messages[messages.length - 1].created_at).getTime() - new Date(messages[0].created_at).getTime()) / 60000)} minutos`
+      }
+      
+      return new Response(JSON.stringify({
+        success: false,
+        summary,
         error: 'openai_not_configured',
         details: 'OPENAI_API_KEY não está configurado'
       }), {
@@ -106,25 +181,89 @@ _IA não configurada. Configure o OPENAI_API_KEY nos secrets do Supabase._`
       })
     }
 
-    // Verificar se há mensagens
-    if (!messages || messages.length === 0) {
-      console.log(`⚠️ [${requestId}] Nenhuma mensagem encontrada`)
-      const fallbackSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}
+    // 4. Conversas com 3-4 mensagens - Resumo básico com IA simples
+    if (messageCount >= 3 && messageCount <= 4) {
+      console.log(`📝 [${requestId}] Gerando resumo básico com IA para ${messageCount} mensagens`)
+      
+      try {
+        const conversationHistory = messages.map(msg => 
+          `[${msg.sender_type}] ${msg.sender_name}: ${msg.content || '[Mensagem sem texto]'}`
+        ).join('\n')
+
+        const basicPrompt = `Analise esta conversa inicial e extraia as informações principais em um resumo conciso:
+
+DADOS DO CLIENTE:
+- Nome: ${conversation.client_name || 'Não informado'}
+- Telefone: ${conversation.client_phone}
+- Temperatura: ${conversation.lead_temperature}
+
+CONVERSA:
+${conversationHistory}
+
+Gere um resumo focado em:
+• O que o cliente quer/precisa
+• Informações fornecidas pelo cliente
+• Próximos passos sugeridos
+
+Seja direto e objetivo (máximo 200 palavras).`
+
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'Você é um assistente especializado em resumos comerciais concisos.' },
+              { role: 'user', content: basicPrompt }
+            ],
+            max_tokens: 500,
+            temperature: 0.3
+          })
+        })
+
+        if (aiResponse.ok) {
+          const aiData = await aiResponse.json()
+          const basicSummary = `**Cliente:** ${conversation.client_name || conversation.client_phone}
 **Telefone:** ${conversation.client_phone}
 **Temperatura:** ${conversation.lead_temperature === 'hot' ? 'Cliente Quente 🔥' : conversation.lead_temperature === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
-**Valor Potencial:** R$ ${conversation.potential_value || 'Não informado'}
-**Fonte:** ${conversation.source || 'WhatsApp'}
 
-_Nenhuma mensagem encontrada na conversa._`
-      
-      return new Response(JSON.stringify({
-        success: false,
-        summary: fallbackSummary,
-        error: 'no_messages',
-        details: 'Conversa não possui mensagens'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+${aiData.choices[0].message.content}
+
+_Resumo gerado automaticamente para conversa inicial com ${messageCount} mensagens._`
+          
+          console.log(`✅ [${requestId}] Resumo básico com IA gerado com sucesso`)
+          return new Response(JSON.stringify({
+            success: true,
+            summary: basicSummary,
+            conversation: {
+              id: conversation.id,
+              client_name: conversation.client_name,
+              client_phone: conversation.client_phone,
+              lead_temperature: conversation.lead_temperature,
+              potential_value: conversation.potential_value
+            }
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        } else {
+          throw new Error(`OpenAI API Error: ${aiResponse.status}`)
+        }
+      } catch (error) {
+        console.log(`❌ [${requestId}] Erro no resumo básico IA:`, error)
+        const fallbackSummary = generateBasicSummary('ai_basic_failed', `_Erro na geração do resumo básico com IA. Mensagens: ${messageCount}_`)
+        
+        return new Response(JSON.stringify({
+          success: false,
+          summary: fallbackSummary,
+          error: 'ai_basic_generation_failed',
+          details: error.message
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
     }
 
     // Gerar resumo com IA
