@@ -18,6 +18,7 @@ interface SimpleSeller {
 
 interface SimpleConversation {
   id: number;
+  conversationId: string; // UUID real da conversa
   clientName: string;
   clientPhone: string;
   leadType: string;
@@ -36,6 +37,8 @@ export const SimpleTransferModal = ({ isOpen, onClose, conversation, onTransfer 
   const [notes, setNotes] = useState('');
   const [sellers, setSellers] = useState<SimpleSeller[]>([]);
   const [loading, setLoading] = useState(false);
+  const [conversationSummary, setConversationSummary] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const { toast } = useToast();
 
   // Carregar vendedores reais do banco
@@ -75,6 +78,37 @@ export const SimpleTransferModal = ({ isOpen, onClose, conversation, onTransfer 
     loadSellers();
   }, [isOpen, toast]);
 
+  // Gerar resumo da conversa com IA
+  useEffect(() => {
+    const generateSummary = async () => {
+      if (!isOpen || !conversation?.conversationId) return;
+      
+      setSummaryLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-conversation-summary', {
+          body: {
+            conversation_id: conversation.conversationId
+          }
+        });
+
+        if (error) throw error;
+        
+        setConversationSummary(data.summary || 'Resumo não disponível');
+      } catch (error) {
+        console.error('Erro ao gerar resumo:', error);
+        setConversationSummary(`**Cliente:** ${conversation.clientName} (${conversation.clientPhone})
+**Classificação:** ${conversation.leadType === 'hot' ? 'Cliente Quente 🔥' : conversation.leadType === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
+**Status:** ${conversation.status}
+
+_Resumo detalhado não disponível._`);
+      } finally {
+        setSummaryLoading(false);
+      }
+    };
+
+    generateSummary();
+  }, [isOpen, conversation]);
+
   const handleTransfer = async () => {
     if (!selectedSeller) return;
     
@@ -89,12 +123,6 @@ export const SimpleTransferModal = ({ isOpen, onClose, conversation, onTransfer 
     }
   };
 
-  const generateConversationSummary = (conv: SimpleConversation | null) => {
-    if (!conv) return '';
-    return `Cliente: ${conv.clientName} (${conv.clientPhone})
-Classificação: ${conv.leadType === 'hot' ? 'Cliente Quente 🔥' : conv.leadType === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
-Status: ${conv.status}`;
-  };
 
   const getSellerAvailability = (seller: SimpleSeller) => {
     const usage = seller.current_clients / seller.max_concurrent_clients;
@@ -115,10 +143,24 @@ Status: ${conv.status}`;
         <div className="space-y-6">
           {/* Resumo da Conversa */}
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-gray-900 mb-2">Resumo da Conversa</h3>
-            <pre className="text-sm text-gray-600 whitespace-pre-wrap font-sans">
-              {generateConversationSummary(conversation)}
-            </pre>
+            <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              Resumo da Conversa
+              {summaryLoading && (
+                <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+              )}
+            </h3>
+            <div className="text-sm text-gray-600 whitespace-pre-wrap font-sans max-h-64 overflow-y-auto">
+              {summaryLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-center">
+                    <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    <p className="text-gray-500">Gerando resumo detalhado...</p>
+                  </div>
+                </div>
+              ) : (
+                conversationSummary || 'Resumo não disponível'
+              )}
+            </div>
           </div>
 
           {/* Lista de Vendedores */}

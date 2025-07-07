@@ -63,6 +63,7 @@ export const TransferToSellerButton: React.FC<TransferToSellerButtonProps> = ({
         onClose={() => setIsOpen(false)}
         conversation={conversation ? {
           id: parseInt(conversation.id),
+          conversationId: conversation.id, // UUID real da conversa
           clientName: conversation.client_name || 'Não informado',
           clientPhone: conversation.client_phone,
           leadType: conversation.lead_temperature,

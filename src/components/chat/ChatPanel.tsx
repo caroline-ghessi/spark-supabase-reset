@@ -212,7 +212,14 @@ export const ChatPanel = ({ conversation, messages, onStatusChange, onClose }: C
       <SimpleTransferModal
         isOpen={isTransferModalOpen}
         onClose={() => setIsTransferModalOpen(false)}
-        conversation={conversation}
+        conversation={conversation ? {
+          id: conversation.id,
+          conversationId: conversation.id.toString(), // Converter para string UUID
+          clientName: conversation.clientName,
+          clientPhone: conversation.clientPhone,
+          leadType: conversation.leadType,
+          status: conversation.status
+        } : null}
         onTransfer={handleTransfer}
       />
 
