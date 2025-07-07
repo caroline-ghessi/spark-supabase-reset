@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, User, Phone } from 'lucide-react';
 import { RealConversation } from '@/types/whatsapp';
+import { TransferToSellerButton } from '@/components/ui/TransferToSellerButton';
 
 interface TakeControlSectionProps {
   conversation: RealConversation;
@@ -28,12 +29,18 @@ export const TakeControlSection: React.FC<TakeControlSectionProps> = ({
 
   if (conversation.status === 'manual') {
     return (
-      <div className="flex items-center space-x-2 text-green-600 mt-3">
-        <CheckCircle className="w-5 h-5" />
-        <span className="font-medium">Você está no controle desta conversa</span>
-        <span className="text-sm text-gray-500 ml-4">
-          • {conversation.client_name} ({conversation.client_phone})
-        </span>
+      <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center space-x-2 text-green-600">
+          <CheckCircle className="w-5 h-5" />
+          <span className="font-medium">Você está no controle desta conversa</span>
+          <span className="text-sm text-gray-500 ml-4">
+            • {conversation.client_name} ({conversation.client_phone})
+          </span>
+        </div>
+        <TransferToSellerButton 
+          conversationId={conversation.id} 
+          conversation={conversation}
+        />
       </div>
     );
   }
@@ -50,13 +57,19 @@ export const TakeControlSection: React.FC<TakeControlSectionProps> = ({
           <span>{conversation.client_phone}</span>
         </div>
       </div>
-      <Button
-        onClick={handleTakeControl}
-        disabled={takingControl}
-        className="bg-orange-500 hover:bg-orange-600 text-white"
-      >
-        {takingControl ? 'Assumindo...' : '👆 Assumir Controle'}
-      </Button>
+      <div className="flex items-center space-x-2">
+        <Button
+          onClick={handleTakeControl}
+          disabled={takingControl}
+          className="bg-orange-500 hover:bg-orange-600 text-white"
+        >
+          {takingControl ? 'Assumindo...' : '👆 Assumir Controle'}
+        </Button>
+        <TransferToSellerButton 
+          conversationId={conversation.id} 
+          conversation={conversation}
+        />
+      </div>
     </div>
   );
 };
