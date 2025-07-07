@@ -130,6 +130,157 @@ export type Database = {
           },
         ]
       }
+      alert_configurations: {
+        Row: {
+          cooldown_minutes: number | null
+          created_at: string
+          description: string | null
+          escalation_levels: number[]
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          name: string
+          notification_channels: string[]
+          trigger_conditions: Json
+          updated_at: string
+        }
+        Insert: {
+          cooldown_minutes?: number | null
+          created_at?: string
+          description?: string | null
+          escalation_levels?: number[]
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          name: string
+          notification_channels?: string[]
+          trigger_conditions: Json
+          updated_at?: string
+        }
+        Update: {
+          cooldown_minutes?: number | null
+          created_at?: string
+          description?: string | null
+          escalation_levels?: number[]
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          name?: string
+          notification_channels?: string[]
+          trigger_conditions?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      alert_history: {
+        Row: {
+          alert_configuration_id: string | null
+          channels_sent: string[]
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          recipients: Json
+          resolved_at: string | null
+          resolved_by: string | null
+          response_time_minutes: number | null
+          status: string
+          triggered_by_conversation_id: string | null
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          alert_configuration_id?: string | null
+          channels_sent: string[]
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          recipients: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_time_minutes?: number | null
+          status?: string
+          triggered_by_conversation_id?: string | null
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          alert_configuration_id?: string | null
+          channels_sent?: string[]
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          recipients?: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response_time_minutes?: number | null
+          status?: string
+          triggered_by_conversation_id?: string | null
+          triggered_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_history_alert_configuration_id_fkey"
+            columns: ["alert_configuration_id"]
+            isOneToOne: false
+            referencedRelation: "alert_configurations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_history_triggered_by_conversation_id_fkey"
+            columns: ["triggered_by_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_history_triggered_by_conversation_id_fkey"
+            columns: ["triggered_by_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversations_full"
+            referencedColumns: ["conversation_id"]
+          },
+        ]
+      }
+      alert_types: {
+        Row: {
+          channel: string
+          condition_description: string
+          created_at: string
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          name: string
+          priority: string
+          target_role: string
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          condition_description: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          name: string
+          priority?: string
+          target_role: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          condition_description?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          name?: string
+          priority?: string
+          target_role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -325,6 +476,45 @@ export type Database = {
           id?: string
           notification_type?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      escalation_contacts: {
+        Row: {
+          created_at: string
+          email: string
+          escalation_level: number
+          id: string
+          is_active: boolean
+          name: string
+          role: string
+          updated_at: string
+          whatsapp_number: string
+          work_schedule: Json | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          escalation_level: number
+          id?: string
+          is_active?: boolean
+          name: string
+          role: string
+          updated_at?: string
+          whatsapp_number: string
+          work_schedule?: Json | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          escalation_level?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          role?: string
+          updated_at?: string
+          whatsapp_number?: string
+          work_schedule?: Json | null
         }
         Relationships: []
       }

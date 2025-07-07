@@ -7,6 +7,7 @@ import { Switch } from '../ui/switch';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Separator } from '../ui/separator';
+import { Loader2 } from 'lucide-react';
 import { 
   Bell, 
   AlertTriangle, 
@@ -17,25 +18,27 @@ import {
   Mail,
   MessageSquare
 } from 'lucide-react';
-import { mockTiposAlerta, mockContatosEscalacao, TipoAlerta, ContatoEscalacao } from '../../data/configData';
+import { useAlertsSystem } from '../../hooks/useAlertsSystem';
 
 interface AlertasTabProps {
   onUnsavedChanges: (hasChanges: boolean) => void;
 }
 
 export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
-  const [alertas, setAlertas] = useState(mockTiposAlerta);
-  const [contatos, setContatos] = useState(mockContatosEscalacao);
+  const { 
+    alertTypes, 
+    escalationContacts, 
+    loading, 
+    toggleAlertType 
+  } = useAlertsSystem();
 
-  const toggleAlerta = (index: number) => {
-    const updated = [...alertas];
-    updated[index].ativo = !updated[index].ativo;
-    setAlertas(updated);
+  const handleToggleAlert = async (alertId: string, isActive: boolean) => {
+    await toggleAlertType(alertId, isActive);
     onUnsavedChanges(true);
   };
 
   const getPrioridadeColor = (prioridade: string) => {
-    switch (prioridade) {
+    switch (prioridade.toLowerCase()) {
       case 'critica': return 'bg-red-100 text-red-800';
       case 'alta': return 'bg-orange-100 text-orange-800';
       case 'media': return 'bg-yellow-100 text-yellow-800';
@@ -45,7 +48,7 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
   };
 
   const getPrioridadeIcon = (prioridade: string) => {
-    switch (prioridade) {
+    switch (prioridade.toLowerCase()) {
       case 'critica': return AlertTriangle;
       case 'alta': return Bell;
       case 'media': return Clock;
@@ -53,6 +56,20 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
       default: return Bell;
     }
   };
+
+  const formatWorkSchedule = (schedule: any) => {
+    if (!schedule) return '08:00 - 18:00';
+    return `${schedule.start || '08:00'} - ${schedule.end || '18:00'}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
+        <span className="ml-2 text-gray-600">Carregando configurações de alertas...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -69,7 +86,7 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
               <Bell className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-gray-600">Alertas Configurados</p>
-                <p className="text-xl font-bold">{alertas.length}</p>
+                <p className="text-xl font-bold">{alertTypes.length}</p>
               </div>
             </div>
           </CardContent>
@@ -81,7 +98,7 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
               <AlertTriangle className="h-5 w-5 text-red-600" />
               <div>
                 <p className="text-sm text-gray-600">Alertas Ativos</p>
-                <p className="text-xl font-bold">{alertas.filter(a => a.ativo).length}</p>
+                <p className="text-xl font-bold">{alertTypes.filter(a => a.is_active).length}</p>
               </div>
             </div>
           </CardContent>
@@ -93,7 +110,7 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
               <Users className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm text-gray-600">Contatos Escalação</p>
-                <p className="text-xl font-bold">{contatos.length}</p>
+                <p className="text-xl font-bold">{escalationContacts.length}</p>
               </div>
             </div>
           </CardContent>
@@ -122,39 +139,39 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {alertas.map((alerta, index) => {
-              const PrioridadeIcon = getPrioridadeIcon(alerta.prioridade);
+            {alertTypes.map((alerta) => {
+              const PrioridadeIcon = getPrioridadeIcon(alerta.priority);
               
               return (
-                <div key={index} className="p-4 border rounded-lg">
+                <div key={alerta.id} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3">
                       <PrioridadeIcon className="w-5 h-5 text-gray-600" />
                       <div>
-                        <h4 className="font-medium text-gray-900">{alerta.nome}</h4>
-                        <p className="text-sm text-gray-600">{alerta.condicao}</p>
+                        <h4 className="font-medium text-gray-900">{alerta.name}</h4>
+                        <p className="text-sm text-gray-600">{alerta.condition_description}</p>
                       </div>
                     </div>
                     <Switch
-                      checked={alerta.ativo}
-                      onCheckedChange={() => toggleAlerta(index)}
+                      checked={alerta.is_active}
+                      onCheckedChange={(isActive) => handleToggleAlert(alerta.id, isActive)}
                     />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-500">Destinatário:</p>
-                      <p className="font-medium">{alerta.destinatario}</p>
+                      <p className="font-medium">{alerta.target_role}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Canal:</p>
-                      <p className="font-medium">{alerta.canal}</p>
+                      <p className="font-medium">{alerta.channel}</p>
                     </div>
                   </div>
                   
                   <div className="mt-3">
-                    <Badge className={getPrioridadeColor(alerta.prioridade)}>
-                      {alerta.prioridade.toUpperCase()}
+                    <Badge className={getPrioridadeColor(alerta.priority)}>
+                      {alerta.priority.toUpperCase()}
                     </Badge>
                   </div>
                 </div>
@@ -172,22 +189,22 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {contatos.map((contato, index) => (
-              <div key={index} className="p-4 border rounded-lg">
+            {escalationContacts.map((contato) => (
+              <div key={contato.id} className="p-4 border rounded-lg">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h4 className="font-medium text-gray-900">{contato.nome}</h4>
-                    <p className="text-sm text-gray-600">{contato.cargo}</p>
+                    <h4 className="font-medium text-gray-900">{contato.name}</h4>
+                    <p className="text-sm text-gray-600">{contato.role}</p>
                   </div>
                   <Badge variant="outline">
-                    Nível {contato.nivelEscalacao}
+                    Nível {contato.escalation_level}
                   </Badge>
                 </div>
                 
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center space-x-2">
                     <Phone className="w-4 h-4 text-gray-400" />
-                    <span>{contato.whatsapp}</span>
+                    <span>{contato.whatsapp_number}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Mail className="w-4 h-4 text-gray-400" />
@@ -195,7 +212,7 @@ export const AlertasTab = ({ onUnsavedChanges }: AlertasTabProps) => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Clock className="w-4 h-4 text-gray-400" />
-                    <span>Disponível: {contato.horarioAtendimento}</span>
+                    <span>Disponível: {formatWorkSchedule(contato.work_schedule)}</span>
                   </div>
                 </div>
               </div>
