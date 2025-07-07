@@ -148,7 +148,7 @@ Mantenha o resumo conciso mas informativo, focado em facilitar a continuidade do
       throw new Error(`Erro ao atualizar conversa: ${updateError.message}`)
     }
 
-    // 5. Enviar notificação via Rodri.GO ou diretamente para o vendedor
+    // 5. Enviar notificação via Rodri.GO (centralizada)
     const notificationMessage = `🔔 *NOVO LEAD TRANSFERIDO* 🔔
 
 👤 *Cliente:* ${conversation.client_name || conversation.client_phone}
@@ -166,32 +166,28 @@ ${transfer_note ? `📝 *Nota da Transferência:*\n${transfer_note}\n\n` : ''}
 _Lead transferido automaticamente pelo sistema de IA._`
 
     try {
-      // Usar Rodri.GO se disponível, senão enviar direto para o vendedor
-      const notificationToken = rodrigoBot?.whapi_token || seller.whapi_token
-      const notificationTarget = seller.whatsapp_number
-
-      if (notificationToken) {
-        const whapiResponse = await fetch('https://gate.whapi.cloud/messages/text', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${notificationToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            to: notificationTarget,
-            body: notificationMessage
-          })
-        })
-
-        if (whapiResponse.ok) {
-          const botType = rodrigoBot?.whapi_token === notificationToken ? 'Rodri.GO' : 'vendedor'
-          console.log(`📱 [${requestId}] Notificação enviada via ${botType} para ${seller.name}`)
-        } else {
-          console.log(`⚠️ [${requestId}] Falha ao enviar notificação WhatsApp:`, await whapiResponse.text())
+      // SEMPRE usar Rodri.GO para centralizar comunicações
+      const { error: sendError } = await supabase.functions.invoke('rodrigo-send-message', {
+        body: {
+          to_number: seller.whatsapp_number,
+          message: notificationMessage,
+          context_type: 'notification',
+          metadata: {
+            conversation_id: conversation_id,
+            seller_id: seller_id,
+            transfer_note: transfer_note,
+            lead_temperature: conversation.lead_temperature
+          }
         }
+      })
+
+      if (sendError) {
+        console.log(`⚠️ [${requestId}] Falha ao enviar via Rodri.GO:`, sendError)
+      } else {
+        console.log(`📱 [${requestId}] Notificação enviada via Rodri.GO para ${seller.name}`)
       }
     } catch (notifyError) {
-      console.log(`⚠️ [${requestId}] Erro na notificação WhatsApp:`, notifyError)
+      console.log(`⚠️ [${requestId}] Erro na notificação via Rodri.GO:`, notifyError)
     }
 
     // Criar notificação na plataforma

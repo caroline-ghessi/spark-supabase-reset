@@ -242,6 +242,45 @@ export type Database = {
           },
         ]
       }
+      alert_rules: {
+        Row: {
+          actions: Json
+          conditions: Json
+          cooldown_minutes: number | null
+          created_at: string
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          name: string
+          rule_type: string
+          updated_at: string
+        }
+        Insert: {
+          actions: Json
+          conditions: Json
+          cooldown_minutes?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          name: string
+          rule_type: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          conditions?: Json
+          cooldown_minutes?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          name?: string
+          rule_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       alert_types: {
         Row: {
           channel: string
@@ -388,6 +427,59 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      communication_logs: {
+        Row: {
+          context_type: string
+          created_at: string
+          id: string
+          message_content: string
+          message_type: string
+          metadata: Json | null
+          recipient_number: string
+          sender_id: string | null
+          sender_name: string
+          status: string
+          updated_at: string
+          whapi_message_id: string | null
+        }
+        Insert: {
+          context_type?: string
+          created_at?: string
+          id?: string
+          message_content: string
+          message_type?: string
+          metadata?: Json | null
+          recipient_number: string
+          sender_id?: string | null
+          sender_name?: string
+          status?: string
+          updated_at?: string
+          whapi_message_id?: string | null
+        }
+        Update: {
+          context_type?: string
+          created_at?: string
+          id?: string
+          message_content?: string
+          message_type?: string
+          metadata?: Json | null
+          recipient_number?: string
+          sender_id?: string | null
+          sender_name?: string
+          status?: string
+          updated_at?: string
+          whapi_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_logs_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversations: {
         Row: {
@@ -837,17 +929,20 @@ export type Database = {
       }
       sellers: {
         Row: {
+          alerts_count: number | null
           created_at: string | null
           current_clients: number | null
           email: string
           id: string
           last_activity: string | null
+          last_alert_at: string | null
           max_concurrent_clients: number | null
           metadata: Json | null
           name: string
           performance_score: number | null
           phone: string
           position: string | null
+          response_time_avg: number | null
           specialties: string[] | null
           status: string | null
           updated_at: string | null
@@ -860,17 +955,20 @@ export type Database = {
           work_schedule: Json | null
         }
         Insert: {
+          alerts_count?: number | null
           created_at?: string | null
           current_clients?: number | null
           email: string
           id?: string
           last_activity?: string | null
+          last_alert_at?: string | null
           max_concurrent_clients?: number | null
           metadata?: Json | null
           name: string
           performance_score?: number | null
           phone: string
           position?: string | null
+          response_time_avg?: number | null
           specialties?: string[] | null
           status?: string | null
           updated_at?: string | null
@@ -883,17 +981,20 @@ export type Database = {
           work_schedule?: Json | null
         }
         Update: {
+          alerts_count?: number | null
           created_at?: string | null
           current_clients?: number | null
           email?: string
           id?: string
           last_activity?: string | null
+          last_alert_at?: string | null
           max_concurrent_clients?: number | null
           metadata?: Json | null
           name?: string
           performance_score?: number | null
           phone?: string
           position?: string | null
+          response_time_avg?: number | null
           specialties?: string[] | null
           status?: string | null
           updated_at?: string | null
