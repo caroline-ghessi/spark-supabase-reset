@@ -14,7 +14,7 @@ import {
   Settings as SettingsIcon,
   BarChart3
 } from 'lucide-react';
-import { VendedoresTab } from './VendedoresTab';
+import { RealSellersPanel } from '../sellers/RealSellersPanel';
 import { IAPromptsTab } from './IAPromptsTab';
 import { ClientesTab } from './ClientesTab';
 import { AlertasTab } from './AlertasTab';
@@ -201,7 +201,7 @@ export const SettingsPanel = () => {
       case 'dashboard':
         return renderDashboard();
       case 'vendedores':
-        return <VendedoresTab onUnsavedChanges={setHasUnsavedChanges} />;
+        return <RealSellersPanel />;
       case 'ia-prompts':
         return <IAPromptsTab onUnsavedChanges={setHasUnsavedChanges} />;
       case 'clientes':
