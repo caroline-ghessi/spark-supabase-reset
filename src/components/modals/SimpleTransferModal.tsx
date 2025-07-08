@@ -105,28 +105,17 @@ export const SimpleTransferModal = ({ isOpen, onClose, conversation, onTransfer 
         
         if (data?.success === false) {
           console.warn('⚠️ Função retornou erro:', data);
-          setConversationSummary(data.summary || 'Resumo não disponível');
-          toast({
-            title: "Aviso",
-            description: `Resumo básico gerado: ${data.error === 'openai_not_configured' ? 'IA não configurada' : 'Falha na geração automática'}`,
-            variant: "default",
-          });
+          throw new Error(data.message || 'Falha na geração do resumo');
         } else {
           setConversationSummary(data.summary || 'Resumo não disponível');
           console.log('✅ Resumo gerado com sucesso');
         }
       } catch (error) {
         console.error('❌ Erro ao gerar resumo:', error);
-        const fallbackSummary = `**Cliente:** ${conversation.clientName} (${conversation.clientPhone})
-**Classificação:** ${conversation.leadType === 'hot' ? 'Cliente Quente 🔥' : conversation.leadType === 'warm' ? 'Cliente Morno 🟡' : 'Cliente Frio 🔵'}
-**Status:** ${conversation.status}
-
-_Erro ao gerar resumo detalhado. Verifique os logs da Edge Function._`;
-        
-        setConversationSummary(fallbackSummary);
+        setConversationSummary('Erro ao gerar resumo. Verifique o histórico de mensagens abaixo.');
         toast({
           title: "Erro",
-          description: "Falha ao gerar resumo detalhado. Resumo básico disponível.",
+          description: "Falha ao gerar resumo. Vendedor pode ver histórico completo de mensagens.",
           variant: "destructive",
         });
       } finally {
