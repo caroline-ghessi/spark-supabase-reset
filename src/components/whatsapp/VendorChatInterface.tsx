@@ -9,16 +9,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Phone, User, Clock, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import { MediaMessage } from './chat/MediaMessage';
-
-interface VendorMessage {
-  id: string;
-  text_content: string;
-  is_from_seller: boolean;
-  sent_at: string;
-  status: string;
-  seller_name?: string;
-}
+import { MessageBubble } from '@/components/ui/MessageBubble';
+import { RealMessage } from '@/types/whatsapp';
 
 interface VendorConversation {
   conversation_id: string;
@@ -34,7 +26,7 @@ interface VendorConversation {
 
 interface VendorChatInterfaceProps {
   conversation: VendorConversation;
-  messages: VendorMessage[];
+  messages: RealMessage[];
   onSendMessage: (message: string) => Promise<void>;
 }
 
@@ -62,12 +54,6 @@ export const VendorChatInterface: React.FC<VendorChatInterfaceProps> = ({
     }
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -109,43 +95,10 @@ export const VendorChatInterface: React.FC<VendorChatInterfaceProps> = ({
           </div>
         ) : (
           messages.map((message) => (
-            <div
+            <MessageBubble
               key={message.id}
-              className={`flex ${message.is_from_seller ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    message.is_from_seller
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  {message.text_content ? (
-                    <p className="text-sm">{message.text_content}</p>
-                  ) : (
-                    <p className="text-sm italic text-muted-foreground">[Mensagem de mídia]</p>
-                  )}
-                  
-                  {/* Renderizar mídia se houver */}
-                  {/* Note: vendor messages não têm file_url diretamente, mas têm media_url */}
-                  
-                  <div className="flex items-center justify-between mt-1">
-                    <span className={`text-xs ${
-                      message.is_from_seller ? 'text-blue-100' : 'text-gray-500'
-                    }`}>
-                      {formatTime(message.sent_at)}
-                    </span>
-                    {message.is_from_seller && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs ml-2"
-                      >
-                        {message.status}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-            </div>
+              message={message}
+            />
           ))
         )}
       </div>

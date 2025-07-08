@@ -24,7 +24,7 @@ export interface RealMessage {
   sender_type: 'client' | 'bot' | 'operator' | 'seller' | 'admin';
   sender_name: string;
   content: string;
-  message_type: 'text' | 'image' | 'document' | 'audio' | 'video';
+  message_type: 'text' | 'image' | 'document' | 'audio' | 'video' | 'voice' | 'sticker' | 'location' | 'contact' | 'link_preview' | 'action' | 'unknown';
   file_url?: string;
   file_name?: string;
   file_size?: number;

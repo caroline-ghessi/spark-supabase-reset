@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, Users, MessageSquare, TrendingUp, RefreshCw } from 'lucide-react';
 import { useVendorConversations } from '@/hooks/useVendorConversations';
-import { useVendorMessages, VendorMessage as ImportedVendorMessage } from '@/hooks/useVendorMessages';
+import { useVendorMessages } from '@/hooks/useVendorMessages';
 import { VendorConversationsList } from './VendorConversationsList';
 import { VendorChatInterface } from './VendorChatInterface';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,17 +25,6 @@ type VendorConversation = {
   client_messages: number;
   whapi_status: string;
   avg_quality_score?: number;
-};
-
-// Adapter function to convert ImportedVendorMessage to VendorMessage
-const adaptVendorMessages = (messages: ImportedVendorMessage[]) => {
-  return messages.map(msg => ({
-    id: msg.id,
-    text_content: msg.text_content || '',
-    is_from_seller: msg.is_from_seller,
-    sent_at: msg.sent_at,
-    status: msg.status
-  }));
 };
 
 export const VendorMonitoringDashboard: React.FC = () => {
@@ -211,7 +200,7 @@ export const VendorMonitoringDashboard: React.FC = () => {
                 seller_messages: selectedConversation.seller_messages,
                 client_messages: selectedConversation.client_messages
               }}
-              messages={adaptVendorMessages(messages)}
+              messages={messages}
               onSendMessage={async (message: string) => {
                 // Placeholder para implementar envio de mensagem
                 console.log('Enviando mensagem:', message);

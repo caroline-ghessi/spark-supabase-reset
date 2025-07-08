@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -57,10 +57,19 @@ interface VendorMessagesFilters {
 
 export const useVendorMessages = (conversationId?: string, refreshKey?: number) => {
   const [conversations, setConversations] = useState<VendorConversation[]>([]);
-  const [messages, setMessages] = useState<VendorMessage[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Auto-load messages when conversationId changes
+  useEffect(() => {
+    if (conversationId) {
+      loadMessages(conversationId);
+    } else {
+      setMessages([]);
+    }
+  }, [conversationId, refreshKey]);
 
   const loadConversations = useCallback(async (filters: VendorMessagesFilters = {}) => {
     console.log('🔍 Carregando conversas de vendedores com filtros:', filters);
@@ -115,17 +124,17 @@ export const useVendorMessages = (conversationId?: string, refreshKey?: number) 
   }, [toast]);
 
   const loadMessages = useCallback(async (targetConversationId: string) => {
-    console.log(`📨 Carregando mensagens de vendedor para conversa: ${targetConversationId}`);
+    console.log(`📨 Carregando mensagens unificadas para conversa: ${targetConversationId}`);
     
     try {
       const { data, error: fetchError } = await supabase
-        .from('vendor_whatsapp_messages')
+        .from('messages')
         .select('*')
         .eq('conversation_id', targetConversationId)
-        .order('sent_at', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (fetchError) {
-        console.error('❌ Erro ao carregar mensagens do vendedor:', fetchError);
+        console.error('❌ Erro ao carregar mensagens unificadas:', fetchError);
         toast({
           title: "Erro",
           description: `Falha ao carregar mensagens: ${fetchError.message}`,
@@ -134,10 +143,10 @@ export const useVendorMessages = (conversationId?: string, refreshKey?: number) 
         return;
       }
 
-      console.log(`✅ Mensagens do vendedor carregadas para ${targetConversationId}:`, data?.length || 0);
+      console.log(`✅ Mensagens unificadas carregadas para ${targetConversationId}:`, data?.length || 0);
       setMessages(data || []);
     } catch (err) {
-      console.error('❌ Erro na busca de mensagens do vendedor:', err);
+      console.error('❌ Erro na busca de mensagens unificadas:', err);
       toast({
         title: "Erro",
         description: "Falha ao carregar mensagens - erro de conexão",
