@@ -10,6 +10,7 @@ import { DashboardAlerts } from './dashboard/DashboardAlerts';
 import { DashboardStats } from './dashboard/DashboardStats';
 import { DashboardContent } from './dashboard/DashboardContent';
 import { EmptyStateMessage } from './dashboard/EmptyStateMessage';
+import { WebhookTestPanel } from './WebhookTestPanel';
 
 export const WhatsAppDashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -166,16 +167,23 @@ export const WhatsAppDashboard: React.FC = () => {
               </div>
             </div>
             
-            <DashboardContent
-              conversations={conversations}
-              selectedConversation={selectedConversation}
-              messages={messages}
-              loading={loading}
-              onSelectConversation={handleSelectConversation}
-              onSendMessage={handleSendMessage}
-              onTakeControl={handleTakeControl}
-              onRefresh={loadConversations}
-            />
+            <div className="flex-1 flex space-x-4 overflow-hidden">
+              <div className="flex-1">
+                <DashboardContent
+                  conversations={conversations}
+                  selectedConversation={selectedConversation}
+                  messages={messages}
+                  loading={loading}
+                  onSelectConversation={handleSelectConversation}
+                  onSendMessage={handleSendMessage}
+                  onTakeControl={handleTakeControl}
+                  onRefresh={loadConversations}
+                />
+              </div>
+              <div className="w-80 flex-shrink-0 overflow-y-auto">
+                <WebhookTestPanel />
+              </div>
+            </div>
           </div>
         ) : (
           <EmptyStateMessage />
