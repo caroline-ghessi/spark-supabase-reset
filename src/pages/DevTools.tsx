@@ -12,7 +12,7 @@ import { DifyConnectionTest } from '@/components/whatsapp/DifyConnectionTest';
 export default function DevTools() {
   return (
     <ModernLayout>
-      <div className="h-full w-full flex flex-col overflow-hidden">
+      <div className="min-h-screen w-full flex flex-col">
         {/* Header */}
         <div className="flex-shrink-0 bg-white border-b border-gray-200">
           <div className="p-4">
@@ -29,7 +29,7 @@ export default function DevTools() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden p-4">
+        <div className="flex-1 p-4">
           <Tabs defaultValue="health" className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 mb-6 flex-shrink-0">
               <TabsTrigger value="health">Health Check</TabsTrigger>
@@ -39,7 +39,7 @@ export default function DevTools() {
               <TabsTrigger value="logs">Logs</TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1">
               <TabsContent value="health" className="h-full">
                 <PlatformHealthCheck />
               </TabsContent>
