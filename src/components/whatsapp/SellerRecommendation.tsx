@@ -37,10 +37,12 @@ interface SellerMatch {
 
 interface SellerRecommendationProps {
   selectedConversation: RealConversation | null;
+  isCompact?: boolean;
 }
 
 export const SellerRecommendation: React.FC<SellerRecommendationProps> = ({
-  selectedConversation
+  selectedConversation,
+  isCompact = false
 }) => {
   const [matches, setMatches] = useState<SellerMatch[]>([]);
   const [loading, setLoading] = useState(false);
@@ -232,17 +234,23 @@ export const SellerRecommendation: React.FC<SellerRecommendationProps> = ({
   return (
     <>
       <div className="h-full flex flex-col">
-        <Card className="flex-1 flex flex-col m-4 max-h-[calc(100vh-200px)]">
-          <CardHeader className="flex-shrink-0">
-            <CardTitle className="flex items-center space-x-2">
-              <Target className="w-5 h-5" />
-              <span>Recomendação de Vendedor</span>
+        <Card className={`
+          flex-1 flex flex-col 
+          ${isCompact ? 'm-2' : 'm-4'} 
+          max-h-[calc(100vh-200px)]
+        `}>
+          <CardHeader className={`flex-shrink-0 ${isCompact ? 'p-3' : 'p-6'}`}>
+            <CardTitle className={`flex items-center space-x-2 ${isCompact ? 'text-sm' : 'text-base'}`}>
+              <Target className={`${isCompact ? 'w-4 h-4' : 'w-5 h-5'}`} />
+              <span>{isCompact ? 'Vendedores' : 'Recomendação de Vendedor'}</span>
             </CardTitle>
-            <p className="text-sm text-gray-600">
-              Para: {selectedConversation.client_name} ({selectedConversation.client_phone})
-            </p>
+            {!isCompact && (
+              <p className="text-sm text-gray-600">
+                Para: {selectedConversation.client_name} ({selectedConversation.client_phone})
+              </p>
+            )}
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto min-h-0">
+          <CardContent className={`flex-1 overflow-y-auto min-h-0 ${isCompact ? 'p-2' : 'p-6'}`}>
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
@@ -256,76 +264,89 @@ export const SellerRecommendation: React.FC<SellerRecommendationProps> = ({
               {matches.map((match, index) => (
                 <div 
                   key={match.seller.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  className={`border rounded-lg hover:bg-gray-50 transition-colors ${isCompact ? 'p-2' : 'p-4'}`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium">
+                  <div className={`flex ${isCompact ? 'flex-col space-y-2' : 'items-start justify-between'}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className={`flex items-center ${isCompact ? 'space-x-1 mb-1' : 'space-x-2 mb-2'}`}>
+                        <div className={`${isCompact ? 'w-6 h-6' : 'w-8 h-8'} bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0`}>
+                          <span className={`${isCompact ? 'text-xs' : 'text-sm'} font-medium`}>
                             {match.seller.name.charAt(0)}
                           </span>
                         </div>
-                        <div>
-                          <h4 className="font-medium">{match.seller.name}</h4>
-                          <div className="flex items-center space-x-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className={`font-medium truncate ${isCompact ? 'text-sm' : 'text-base'}`}>
+                            {match.seller.name}
+                          </h4>
+                          <div className={`flex items-center gap-1 ${isCompact ? 'flex-wrap' : 'space-x-2'}`}>
                             <Badge 
                               variant="outline" 
-                              className={getScoreColor(match.score)}
+                              className={`${getScoreColor(match.score)} ${isCompact ? 'text-xs px-1' : ''}`}
                             >
-                              <Star className="w-3 h-3 mr-1" />
-                              {match.score}% compatível
+                              <Star className={`${isCompact ? 'w-2 h-2' : 'w-3 h-3'} mr-1`} />
+                              {match.score}%
                             </Badge>
                             <Badge 
                               variant="outline"
-                              className={getAvailabilityColor(match.availability)}
+                              className={`${getAvailabilityColor(match.availability)} ${isCompact ? 'text-xs px-1' : ''}`}
                             >
-                              <Clock className="w-3 h-3 mr-1" />
+                              <Clock className={`${isCompact ? 'w-2 h-2' : 'w-3 h-3'} mr-1`} />
                               {match.availability}
                             </Badge>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-4 text-xs text-gray-600">
-                          <span>
-                            <TrendingUp className="w-3 h-3 inline mr-1" />
-                            Performance: {match.seller.performance_score}/10
-                          </span>
-                          <span>
-                            Clientes: {match.seller.current_clients}/{match.seller.max_concurrent_clients}
-                          </span>
+                      {!isCompact && (
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-4 text-xs text-gray-600">
+                            <span>
+                              <TrendingUp className="w-3 h-3 inline mr-1" />
+                              Performance: {match.seller.performance_score}/10
+                            </span>
+                            <span>
+                              Clientes: {match.seller.current_clients}/{match.seller.max_concurrent_clients}
+                            </span>
+                          </div>
+                          
+                          {match.reasons.length > 0 && (
+                            <div className="text-xs text-gray-600">
+                              <strong>Por que:</strong> {match.reasons.slice(0, 2).join(', ')}
+                              {match.reasons.length > 2 && '...'}
+                            </div>
+                          )}
+                          
+                          {match.seller.specialties && match.seller.specialties.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {match.seller.specialties.slice(0, isCompact ? 2 : 3).map((specialty, i) => (
+                                <Badge key={i} variant="secondary" className="text-xs">
+                                  {specialty.length > 12 ? specialty.substring(0, 12) + '...' : specialty}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        
-                        {match.reasons.length > 0 && (
-                          <div className="text-xs text-gray-600">
-                            <strong>Por que:</strong> {match.reasons.join(', ')}
-                          </div>
-                        )}
-                        
-                        {match.seller.specialties && match.seller.specialties.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {match.seller.specialties.slice(0, 3).map((specialty, i) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
-                                {specialty}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                     
                     <Button
-                      size="sm"
+                      size={isCompact ? "sm" : "sm"}
                       onClick={() => handleTransferClick(match.seller)}
-                      className="ml-4 flex items-center space-x-1"
+                      className={`${isCompact ? 'w-full text-xs' : 'ml-4'} flex items-center justify-center space-x-1`}
                       variant={index === 0 ? "default" : "outline"}
                     >
-                      <UserPlus className="w-3 h-3" />
-                      <span>Transferir</span>
+                      <UserPlus className={`${isCompact ? 'w-3 h-3' : 'w-3 h-3'}`} />
+                      <span>{isCompact ? 'Transfer.' : 'Transferir'}</span>
                     </Button>
                   </div>
+                  
+                  {/* Informações extras no modo compacto */}
+                  {isCompact && (
+                    <div className="mt-1 text-xs text-gray-500 flex items-center justify-between">
+                      <span>Perf: {match.seller.performance_score}/10</span>
+                      <span>{match.seller.current_clients}/{match.seller.max_concurrent_clients} clientes</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -3,6 +3,9 @@ import { useWhatsAppIntegration } from '@/hooks/useWhatsAppIntegration';
 import { useAuth } from '@/contexts/AuthContext';
 import { testRLSPolicies } from '@/contexts/auth/userOperations';
 import { RealConversation } from '@/types/whatsapp';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Import the dashboard components
 import { DashboardHeader } from './dashboard/DashboardHeader';
@@ -19,6 +22,8 @@ export const WhatsAppDashboard: React.FC = () => {
   const [testingRLS, setTestingRLS] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const isMobile = useIsMobile();
 
   // Usar apenas conversas da API Oficial do WhatsApp (source = 'whatsapp')
   const {
@@ -166,10 +171,69 @@ export const WhatsAppDashboard: React.FC = () => {
                   onRefresh={loadConversations}
                 />
               </div>
-              {selectedConversation && (
-                <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-gray-50">
-                  <SellerRecommendation selectedConversation={selectedConversation} />
+              {selectedConversation && !isMobile && (
+                <div className={`
+                  ${sidebarCollapsed ? 'w-16' : 'w-80 sm:w-72 md:w-80 lg:w-96'} 
+                  flex-shrink-0 border-l border-gray-200 bg-gray-50 relative
+                `}>
+                  {/* Botão de colapsar */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    className="absolute top-2 left-2 z-10 h-8 w-8 p-0 hover:bg-white/80"
+                  >
+                    {sidebarCollapsed ? 
+                      <ChevronLeft className="h-4 w-4" /> : 
+                      <ChevronRight className="h-4 w-4" />
+                    }
+                  </Button>
+                  
+                  {!sidebarCollapsed && (
+                    <SellerRecommendation 
+                      selectedConversation={selectedConversation} 
+                      isCompact={isMobile}
+                    />
+                  )}
                 </div>
+              )}
+              
+              {/* Modal mobile para recomendações */}
+              {selectedConversation && isMobile && (
+                <>
+                  <div className="fixed bottom-4 right-4 z-50">
+                    <Button
+                      onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                      className="rounded-full h-12 w-12 shadow-lg"
+                    >
+                      👤
+                    </Button>
+                  </div>
+                  
+                  {!sidebarCollapsed && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-end">
+                      <div className="bg-white w-full h-2/3 rounded-t-xl overflow-hidden">
+                        <div className="p-4 border-b bg-white flex items-center justify-between">
+                          <h3 className="font-semibold">Recomendação de Vendedores</h3>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSidebarCollapsed(true)}
+                            className="h-8 w-8 p-0"
+                          >
+                            ×
+                          </Button>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <SellerRecommendation 
+                            selectedConversation={selectedConversation} 
+                            isCompact={true}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
