@@ -152,20 +152,6 @@ export const WhatsAppDashboard: React.FC = () => {
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         {isRealUser ? (
           <div className="flex-1 flex flex-col min-h-0">
-            {/* Indicador de que estamos vendo apenas API Oficial */}
-            <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm font-medium text-blue-800">
-                    WhatsApp API Oficial - Central de Atendimento
-                  </span>
-                </div>
-                <span className="text-xs text-blue-600">
-                  {conversations.length} conversas ativas
-                </span>
-              </div>
-            </div>
             
             <div className="flex-1 flex overflow-hidden min-h-0">
               <div className="flex-1 min-w-0">
