@@ -23,15 +23,10 @@ export const clearLocalAuthState = () => {
   // Limpar rate limiting
   LOGIN_ATTEMPTS.clear();
   
-  // Limpar localStorage
+  // Limpar apenas tokens de emergência legítimos (mantendo outros dados do usuário)
   const keysToRemove = [
-    'login_attempts_count',
-    'login_attempts',
-    'login_blocked_until',
-    'dev_access',
-    'dev_user',
     'emergency_access',
-    'emergency_expires',
+    'emergency_expires', 
     'emergency_token'
   ];
   

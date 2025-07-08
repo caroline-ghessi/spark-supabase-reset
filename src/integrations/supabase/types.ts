@@ -927,6 +927,81 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          attempts: number | null
+          blocked_until: string | null
+          created_at: string | null
+          id: string
+          identifier: string
+          limit_type: string
+          updated_at: string | null
+          window_start: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string | null
+          id?: string
+          identifier: string
+          limit_type: string
+          updated_at?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string | null
+          id?: string
+          identifier?: string
+          limit_type?: string
+          updated_at?: string | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
+      security_events: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       sellers: {
         Row: {
           alerts_count: number | null
@@ -1168,6 +1243,13 @@ export type Database = {
             foreignKeyName: "vendor_whatsapp_messages_reviewed_by_fkey"
             columns: ["reviewed_by"]
             isOneToOne: false
+            referencedRelation: "user_security_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_whatsapp_messages_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1226,6 +1308,33 @@ export type Database = {
       }
     }
     Views: {
+      user_security_status: {
+        Row: {
+          email: string | null
+          id: string | null
+          last_activity: string | null
+          role: string | null
+          session_status: string | null
+          unresolved_security_events: number | null
+        }
+        Insert: {
+          email?: string | null
+          id?: string | null
+          last_activity?: string | null
+          role?: string | null
+          session_status?: never
+          unresolved_security_events?: never
+        }
+        Update: {
+          email?: string | null
+          id?: string | null
+          last_activity?: string | null
+          role?: string | null
+          session_status?: never
+          unresolved_security_events?: never
+        }
+        Relationships: []
+      }
       vendor_conversations_full: {
         Row: {
           avg_quality_score: number | null
@@ -1348,6 +1457,10 @@ export type Database = {
         Args: { user_email: string; seller_phone: string }
         Returns: boolean
       }
+      log_security_event: {
+        Args: { event_type: string; severity?: string; event_data?: Json }
+        Returns: string
+      }
       map_whatsapp_message_type: {
         Args: { vendor_type: string }
         Returns: string
@@ -1424,6 +1537,10 @@ export type Database = {
           policy_count: number
           status: string
         }[]
+      }
+      validate_user_session: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
     }
     Enums: {

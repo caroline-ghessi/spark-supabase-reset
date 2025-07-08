@@ -1,14 +1,14 @@
 
 import type { DevConfig } from './types';
 
-// CONFIGURAÇÕES DE DESENVOLVIMENTO MAIS SEGURAS
+// SECURITY: Development mode completely removed for production security
 export const DEV_CONFIG: DevConfig = {
-  enabled: import.meta.env.DEV && localStorage.getItem('enable_dev_mode') === 'true',
+  enabled: false, // Always disabled for security
   adminUser: {
-    id: 'dev-admin-001',
-    email: 'dev@local.test',
-    name: 'Dev Admin',
+    id: '',
+    email: '',
+    name: '',
     role: 'admin' as const,
-    first_login_completed: true
+    first_login_completed: false
   }
 };

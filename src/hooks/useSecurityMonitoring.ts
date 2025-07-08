@@ -1,6 +1,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SecurityAlert {
   id: string;
@@ -184,7 +185,7 @@ export function useSecurityMonitoring() {
     return () => clearInterval(interval);
   }, [user]);
 
-  const addAlert = useCallback((alert: Omit<SecurityAlert, 'id' | 'timestamp'>) => {
+  const addAlert = useCallback(async (alert: Omit<SecurityAlert, 'id' | 'timestamp'>) => {
     // Evitar alertas duplicados
     const isDuplicate = alerts.some(existingAlert => 
       existingAlert.type === alert.type && 
@@ -203,7 +204,21 @@ export function useSecurityMonitoring() {
     
     setAlerts(prev => [newAlert, ...prev].slice(0, 100)); // Manter apenas 100 alertas
     
-    // Log para auditoria
+    // SECURITY: Log to database for audit trail
+    try {
+      await supabase.functions.invoke('log-security-event', {
+        body: {
+          eventType: alert.type,
+          severity: alert.severity,
+          message: alert.message,
+          details: alert.details
+        }
+      });
+    } catch (error) {
+      console.error('Failed to log security event to database:', error);
+    }
+    
+    // Log para auditoria local
     console.warn(`🔒 Security Alert [${alert.severity.toUpperCase()}]:`, {
       ...newAlert,
       userAgent: navigator.userAgent,
