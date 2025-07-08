@@ -45,19 +45,20 @@ serve(async (req) => {
 
     // Verificar se o token do Rodri.GO está configurado nos secrets
     if (!rodrigoWhapiToken) {
+      console.error(`❌ [${requestId}] Token Whapi do Rodri.GO não configurado`)
       throw new Error('Token Whapi do Rodri.GO não configurado nos secrets')
     }
 
-    // Buscar dados do Rodri.GO para logs
+    // CORREÇÃO: Buscar dados do Rodri.GO com o número atualizado
     const { data: rodrigo, error: rodrigoError } = await supabase
       .from('sellers')
       .select('id, name, whatsapp_number')
-      .eq('whatsapp_number', '5194916150')
+      .eq('whatsapp_number', '5551981155622') // Número corrigido
       .single()
 
     if (rodrigoError || !rodrigo) {
-      console.log(`❌ [${requestId}] Erro ao buscar Rodri.GO:`, rodrigoError)
-      throw new Error('Rodri.GO não encontrado na base de dados')
+      console.error(`❌ [${requestId}] Erro ao buscar Rodri.GO:`, rodrigoError)
+      throw new Error('Rodri.GO não encontrado na base de dados com número 5551981155622')
     }
 
     // Formatar número para padrão internacional (adicionar +55 se necessário)
@@ -70,6 +71,7 @@ serve(async (req) => {
     console.log(`🤖 [${requestId}] Enviando mensagem via Rodri.GO para: ${formattedNumber} (original: ${to_number})`)
     console.log(`📋 [${requestId}] Contexto: ${context_type}`)
     console.log(`🔑 [${requestId}] Token configurado: ${rodrigoWhapiToken ? 'SIM' : 'NÃO'}`)
+    console.log(`📞 [${requestId}] Número Rodri.GO: ${rodrigo.whatsapp_number}`)
 
     // Preparar dados para Whapi
     const whapiData: any = {
@@ -83,6 +85,8 @@ serve(async (req) => {
       delete whapiData.body
     }
 
+    console.log(`📊 [${requestId}] Dados Whapi:`, JSON.stringify(whapiData, null, 2))
+
     // Enviar via Whapi usando token dos secrets
     const whapiResponse = await fetch('https://gate.whapi.cloud/messages/text', {
       method: 'POST',
@@ -93,31 +97,72 @@ serve(async (req) => {
       body: JSON.stringify(whapiData)
     })
 
+    const responseText = await whapiResponse.text()
+    console.log(`📥 [${requestId}] Resposta Whapi RAW:`, responseText)
+
     if (!whapiResponse.ok) {
-      const errorText = await whapiResponse.text()
       console.error(`❌ [${requestId}] Erro na resposta Whapi:`, {
         status: whapiResponse.status,
         statusText: whapiResponse.statusText,
-        error: errorText,
+        error: responseText,
         url: 'https://gate.whapi.cloud/messages/text',
-        data: whapiData
+        data: whapiData,
+        token_start: rodrigoWhapiToken?.substring(0, 10) + '...'
       })
-      throw new Error(`Erro Whapi: ${whapiResponse.status} - ${errorText}`)
+
+      // Criar alerta crítico para falha de envio
+      await supabase.functions.invoke('send-management-alert', {
+        body: {
+          alert_type: 'rodrigo_whapi_failure',
+          severity: 'critical',
+          message: `Falha no envio via Rodri.GO: ${whapiResponse.status} - ${responseText}`,
+          context: {
+            to_number: formattedNumber,
+            context_type,
+            error_status: whapiResponse.status,
+            error_message: responseText
+          }
+        }
+      }).catch(e => console.error('Erro ao enviar alerta:', e))
+
+      throw new Error(`Erro Whapi: ${whapiResponse.status} - ${responseText}`)
     }
 
-    const whapiResult = await whapiResponse.json()
+    let whapiResult
+    try {
+      whapiResult = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error(`❌ [${requestId}] Erro ao parsear resposta JSON:`, parseError)
+      throw new Error('Resposta Whapi inválida - não é JSON válido')
+    }
+    
     console.log(`✅ [${requestId}] Mensagem enviada via Rodri.GO:`, whapiResult)
     
     if (!whapiResult.id) {
       console.error(`⚠️ [${requestId}] Resposta Whapi sem message_id:`, whapiResult)
+      
+      // Alerta para resposta sem ID
+      await supabase.functions.invoke('send-management-alert', {
+        body: {
+          alert_type: 'rodrigo_missing_message_id',
+          severity: 'high',
+          message: `Rodri.GO: Resposta Whapi sem message_id para ${formattedNumber}`,
+          context: {
+            to_number: formattedNumber,
+            context_type,
+            whapi_response: whapiResult
+          }
+        }
+      }).catch(e => console.error('Erro ao enviar alerta:', e))
+
       throw new Error('Resposta Whapi inválida - sem message_id')
     }
 
-    // Salvar log da comunicação
+    // Salvar log da comunicação com status correto
     const communicationLog = {
       sender_id: rodrigo.id,
       sender_name: 'Rodri.GO',
-      recipient_number: formattedNumber, // Usar número formatado
+      recipient_number: formattedNumber,
       message_content: message,
       message_type: message_type,
       context_type: context_type,
@@ -128,7 +173,8 @@ serve(async (req) => {
         formatted_number: formattedNumber,
         sent_at: new Date().toISOString(),
         request_id: requestId,
-        whapi_response: whapiResult
+        whapi_response: whapiResult,
+        rodrigo_number: rodrigo.whatsapp_number
       },
       status: 'delivered'
     }
@@ -139,20 +185,45 @@ serve(async (req) => {
 
     if (logError) {
       console.error(`⚠️ [${requestId}] Erro ao salvar log:`, logError)
+    } else {
+      console.log(`📝 [${requestId}] Log salvo com sucesso`)
     }
 
     return new Response(JSON.stringify({
       success: true,
       whapi_message_id: whapiResult.id,
       sender: 'Rodri.GO',
-      context_type: context_type
+      sender_number: rodrigo.whatsapp_number,
+      context_type: context_type,
+      formatted_number: formattedNumber
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
     console.error(`❌ [${requestId}] Erro:`, error)
-    return new Response(JSON.stringify({ error: error.message }), { 
+    
+    // Log do erro na base de dados
+    await supabase
+      .from('communication_logs')
+      .insert({
+        sender_name: 'Rodri.GO',
+        recipient_number: 'error',
+        message_content: `ERRO: ${error.message}`,
+        context_type: 'error',
+        status: 'failed',
+        metadata: {
+          error_message: error.message,
+          request_id: requestId,
+          timestamp: new Date().toISOString()
+        }
+      })
+      .catch(e => console.error('Erro ao salvar log de erro:', e))
+
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      request_id: requestId
+    }), { 
       status: 500, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     })
