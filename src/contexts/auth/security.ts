@@ -1,4 +1,5 @@
 
+import { supabase } from '@/integrations/supabase/client';
 import type { LoginAttempt } from './types';
 
 // Controle de rate limiting mais inteligente
@@ -100,28 +101,21 @@ export const clearRateLimit = (email: string) => {
   console.log(`✅ Rate limit limpo para: ${email}`);
 };
 
-export const validateEmergencyToken = (token: string): boolean => {
+export const validateEmergencyToken = async (token: string): Promise<boolean> => {
   try {
-    // Validação mais robusta do token de emergência
-    const parts = token.split('-');
-    if (parts.length !== 3 || parts[0] !== 'EMG' || parts[2] !== 'SECURE') {
+    // SECURITY: Server-side validation via Edge Function
+    const { data, error } = await supabase.functions.invoke('validate-emergency-token', {
+      body: { token }
+    });
+    
+    if (error) {
+      logSecurityEvent('EMERGENCY_TOKEN_VALIDATION_ERROR', { error: error.message });
       return false;
     }
     
-    const dateStr = parts[1];
-    if (dateStr.length !== 8) return false;
-    
-    const year = parseInt(dateStr.substring(0, 4));
-    const month = parseInt(dateStr.substring(4, 6));
-    const day = parseInt(dateStr.substring(6, 8));
-    
-    const tokenDate = new Date(year, month - 1, day);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Token deve ser do dia atual
-    return tokenDate.getTime() === today.getTime();
+    return data?.valid === true;
   } catch (error) {
+    logSecurityEvent('EMERGENCY_TOKEN_VALIDATION_FAILED', { error });
     return false;
   }
 };

@@ -2,7 +2,7 @@
 import { logSecurityEvent, validateEmergencyToken } from './security';
 import type { User } from './types';
 
-export const checkEmergencyAccess = (setUser: (user: User | null) => void): boolean => {
+export const checkEmergencyAccess = async (setUser: (user: User | null) => void): Promise<boolean> => {
   const emergencyAccess = localStorage.getItem('emergency_access');
   const emergencyExpires = localStorage.getItem('emergency_expires');
   const emergencyToken = localStorage.getItem('emergency_token');
@@ -13,8 +13,8 @@ export const checkEmergencyAccess = (setUser: (user: User | null) => void): bool
     
     // Verificar se não expirou (máximo 1 hora)
     if (now < expiresAt && (expiresAt - now) <= 3600000) {
-      // Verificar token de emergência mais seguro
-      if (validateEmergencyToken(emergencyToken)) {
+      // Verificar token de emergência mais seguro (server-side)
+      if (await validateEmergencyToken(emergencyToken)) {
         setUser({
           id: 'emergency-admin',
           email: 'emergency@admin.com',

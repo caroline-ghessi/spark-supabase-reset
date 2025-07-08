@@ -74,25 +74,32 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
+  // SECURITY: Create safe CSS without dangerouslySetInnerHTML
+  const safeCSS = React.useMemo(() => {
+    return Object.entries(THEMES)
+      .map(([theme, prefix]) => {
+        const rules = colorConfig
+          .map(([key, itemConfig]) => {
+            const color =
+              itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+              itemConfig.color
+            
+            // Sanitize color value to prevent CSS injection
+            const safeColor = color?.replace(/[<>"']/g, '') || ''
+            
+            return `  --color-${key}: ${safeColor};`
+          })
+          .join('\n')
+        
+        return `${prefix} [data-chart=${id}] {\n${rules}\n}`
+      })
+      .join('\n')
+  }, [id, colorConfig])
+
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
+        __html: safeCSS
       }}
     />
   )

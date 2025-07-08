@@ -31,48 +31,8 @@ export const signIn = async (
       return { success: false, error: rateLimitCheck.message };
     }
 
-    // BYPASS DE DESENVOLVIMENTO - apenas em ambiente DEV e se habilitado
-    if (DEV_CONFIG.enabled && 
-        cleanEmail === 'dev@admin.local' && 
-        cleanPassword === 'DevSecure2024!@#') {
-      
-      logSecurityEvent('DEV_LOGIN_ATTEMPT', { email: cleanEmail });
-      setUser(DEV_CONFIG.adminUser);
-      
-      // Salvar flag de dev access
-      localStorage.setItem('dev_access', 'true');
-      localStorage.setItem('dev_user', JSON.stringify(DEV_CONFIG.adminUser));
-      
-      return { 
-        success: true, 
-        user: DEV_CONFIG.adminUser,
-        message: 'Acesso de desenvolvimento' 
-      };
-    }
-
-    // BYPASS TEMPORÁRIO PARA ADMIN (enquanto não há usuários reais)
-    if (cleanEmail === 'admin@whatsapp.local' && cleanPassword === 'admin123') {
-      const adminUser: User = {
-        id: 'temp-admin-001',
-        email: cleanEmail,
-        name: 'Administrator',
-        role: 'admin',
-        first_login_completed: true
-      };
-      
-      logSecurityEvent('TEMP_ADMIN_LOGIN', { email: cleanEmail });
-      setUser(adminUser);
-      
-      // Salvar temporariamente
-      localStorage.setItem('temp_admin_access', 'true');
-      localStorage.setItem('temp_admin_user', JSON.stringify(adminUser));
-      
-      return { 
-        success: true, 
-        user: adminUser,
-        message: 'Acesso temporário de administrador' 
-      };
-    }
+    // SECURITY: Removed all hardcoded authentication bypasses
+    // All authentication now goes through proper Supabase auth
 
     // Login normal via Supabase
     console.log('🔑 Tentando login no Supabase...');
@@ -177,17 +137,13 @@ export const signOut = async (
     console.log('🔓 Fazendo logout do usuário:', user?.email);
     logSecurityEvent('LOGOUT_INITIATED', { userId: user?.id });
     
-    // Limpar acessos especiais
-    localStorage.removeItem('dev_access');
-    localStorage.removeItem('dev_user');
+    // Limpar apenas tokens de emergência legítimos
     localStorage.removeItem('emergency_access');
     localStorage.removeItem('emergency_expires');
     localStorage.removeItem('emergency_token');
-    localStorage.removeItem('temp_admin_access');
-    localStorage.removeItem('temp_admin_user');
     
     // Se for usuário real do Supabase, fazer logout
-    if (session && user?.id && !user.id.startsWith('dev-') && !user.id.startsWith('emergency-') && !user.id.startsWith('temp-')) {
+    if (session && user?.id && !user.id.startsWith('emergency-')) {
       await supabase.auth.signOut();
     }
     
