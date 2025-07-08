@@ -193,6 +193,18 @@ export const WebhookTestPanel: React.FC = () => {
       <CardContent className="space-y-4">
         <div className="flex flex-col space-y-2">
           <Button 
+            onClick={async () => {
+              const { executeRecoveryPlan } = await import('@/utils/recoveryPlan');
+              await executeRecoveryPlan();
+            }} 
+            disabled={testing || reprocessing || healthChecking}
+            className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-700"
+          >
+            <RefreshCw className={`w-4 h-4 ${healthChecking || reprocessing ? 'animate-spin' : ''}`} />
+            <span>🚀 EXECUTAR PLANO DE RECUPERAÇÃO</span>
+          </Button>
+          
+          <Button 
             onClick={runHealthCheck} 
             disabled={testing || reprocessing || healthChecking}
             className="flex items-center space-x-2"
