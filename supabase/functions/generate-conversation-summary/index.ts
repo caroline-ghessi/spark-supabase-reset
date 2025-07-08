@@ -130,63 +130,32 @@ serve(async (req) => {
 
       console.log(`📝 [${requestId}] Histórico da conversa (${conversationHistory.length} chars):`, conversationHistory.substring(0, 200) + '...')
 
-      const summaryPrompt = `Você é um especialista em qualificação de leads e vendas. Analise esta conversa e extraia TODAS as informações comerciais relevantes para o vendedor assumir o atendimento de forma eficaz.
+      const summaryPrompt = `Analise esta conversa e extraia as informações essenciais para o vendedor assumir o atendimento:
 
-DADOS DO CLIENTE:
-- Nome: ${conversation.client_name || 'Não informado'}
-- Telefone: ${conversation.client_phone}
-- Temperatura: ${conversation.lead_temperature}
-- Valor Potencial: R$ ${conversation.potential_value || 'Não informado'}
-- Fonte: ${conversation.source || 'WhatsApp'}
+CLIENTE: ${conversation.client_name || 'Não informado'} | ${conversation.client_phone} | Lead: ${conversation.lead_temperature}
 
-HISTÓRICO COMPLETO DA CONVERSA:
+CONVERSA:
 ${conversationHistory}
 
-INSTRUÇÃO CRÍTICA: Analise cada mensagem em busca de informações comerciais específicas. Gere um resumo DETALHADO e ESTRUTURADO com:
+Gere um resumo OBJETIVO com:
 
-🎯 **PRODUTO/INTERESSE**:
-- Qual produto específico o cliente quer? (energia solar, inversor, painéis, etc.)
-- Que capacidade/potência mencionou? (kWp, kW, etc.)
-- Qual a aplicação? (residencial, comercial, industrial, rural)
-- Mencionou marca ou especificação técnica?
+**🎯 INTERESSE:**
+- Produto/serviço específico que o cliente quer
+- Quantidade/capacidade mencionada (se houver)
 
-📍 **LOCALIZAÇÃO E CONTEXTO**:
-- Qual cidade/região o cliente informou?
-- Tipo de imóvel (casa, empresa, fazenda, etc.)
-- Características do local mencionadas
-- Distância da distribuidora/rede elétrica
+**📍 CONTEXTO:**
+- Localização informada
+- Urgência demonstrada
+- Orçamento/prazo mencionado
 
-💰 **INVESTIMENTO E URGÊNCIA**:
-- Cliente mencionou orçamento disponível?
-- Falou sobre prazo de pagamento preferido?
-- Demonstrou urgência? Por quê?
-- Mencionou financiamento ou forma de pagamento?
+**⚡ SITUAÇÃO:**
+- Principal problema ou necessidade do cliente
+- Motivação da compra
 
-🔍 **SITUAÇÃO ATUAL (SPIN)**:
-- **Situação**: Como está hoje? (conta de luz alta, sem energia, etc.)
-- **Problema**: Que dificuldades relatou?
-- **Implicação**: Como isso afeta o cliente?
-- **Necessidade**: O que exatamente precisa resolver?
+**📋 PRÓXIMOS PASSOS:**
+- 2-3 ações prioritárias para o vendedor
 
-⚡ **CONTEXTO TÉCNICO**:
-- Consumo mencionado (kWh/mês, valor da conta)?
-- Características da instalação atual
-- Limitações ou desafios técnicos mencionados
-- Experiência prévia com energia solar
-
-🎯 **OPORTUNIDADE DE VENDA**:
-- Cliente está comparando propostas?
-- Qual o principal motivador da compra?
-- Sinais de interesse forte ou objeções
-- Próximos passos ideais para fechamento
-
-📋 **INFORMAÇÕES CRÍTICAS**:
-- Decisor da compra identificado?
-- Prazo para decisão mencionado?
-- Documentação necessária discutida?
-- Qualquer informação sensível ou importante
-
-FORMATO: Use tópicos claros e diretos. Se alguma informação NÃO foi mencionada, escreva "Não informado" - mas procure TODAS as pistas no histórico.`
+Seja direto e objetivo. Use "Não informado" apenas se realmente não houver a informação.`
 
         const aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
@@ -200,7 +169,7 @@ FORMATO: Use tópicos claros e diretos. Se alguma informação NÃO foi menciona
               { role: 'system', content: 'Você é um especialista em vendas e atendimento ao cliente.' },
               { role: 'user', content: summaryPrompt }
             ],
-            max_tokens: 2000,
+            max_tokens: 800,
             temperature: 0.7,
             stream: false
           })
