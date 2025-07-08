@@ -1,10 +1,41 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+}
+
+// Função para validar assinatura do webhook
+function validateWebhookSignature(payload: string, signature: string, appSecret: string): boolean {
+  if (!appSecret || !signature) {
+    return false
+  }
+
+  const expectedSignature = createHmac('sha256', appSecret)
+    .update(payload)
+    .digest('hex')
+
+  return `sha256=${expectedSignature}` === signature
+}
+
+// Função para registrar eventos de segurança
+async function logSecurityEvent(supabase: any, eventType: string, details: any, requestId: string) {
+  try {
+    await supabase.functions.invoke('log-security-event', {
+      body: {
+        eventType,
+        severity: 'high',
+        message: `Security violation in webhook: ${eventType}`,
+        details: { ...details, requestId }
+      }
+    })
+    console.log(`🔒 [${requestId}] Evento de segurança registrado: ${eventType}`)
+  } catch (error) {
+    console.error(`❌ [${requestId}] Erro ao registrar evento de segurança:`, error)
+  }
 }
 
 serve(async (req) => {
@@ -27,18 +58,20 @@ serve(async (req) => {
     )
 
     // Verificar credenciais no início
+    const verifyToken = Deno.env.get('WEBHOOK_VERIFY_TOKEN')
+    const appSecret = Deno.env.get('WHATSAPP_APP_SECRET')
     const difyApiKey = Deno.env.get('DIFY_API_KEY')
-    const difyBaseUrl = Deno.env.get('DIFY_BASE_URL') || 'https://api.dify.ai'
+    const difyBaseUrl = Deno.env.get('DIFY_BASE_URL') || 'https://api.dify.ai/v1'
     const whatsappToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN')
     const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
     
     console.log(`🔍 [${requestId}] Verificando credenciais:`)
+    console.log(`   - Verify Token: ${verifyToken ? '✅ Configurado' : '❌ Ausente'}`)
+    console.log(`   - App Secret: ${appSecret ? '✅ Configurado' : '❌ Ausente'}`)
     console.log(`   - Dify API Key: ${difyApiKey ? '✅ Configurada' : '❌ Ausente'}`)
     console.log(`   - Dify Base URL: ${difyBaseUrl}`)
     console.log(`   - WhatsApp Token: ${whatsappToken ? '✅ Configurado' : '❌ Ausente'}`)
     console.log(`   - Phone Number ID: ${phoneNumberId ? '✅ Configurado' : '❌ Ausente'}`)
-    console.log(`   - OpenAI API Key: ${openAIApiKey ? '✅ Configurado' : '❌ Ausente'}`)
 
     // GET - Verificação do webhook
     if (req.method === 'GET') {
@@ -46,9 +79,21 @@ serve(async (req) => {
       const token = url.searchParams.get('hub.verify_token')
       const challenge = url.searchParams.get('hub.challenge')
 
-      console.log(`🔍 [${requestId}] Verificação webhook:`, { mode, token, challenge })
+      console.log(`🔍 [${requestId}] Verificação webhook:`, { mode, token: token ? 'presente' : 'ausente', challenge })
 
-      if (mode === 'subscribe' && challenge) {
+      if (!verifyToken) {
+        console.error(`❌ [${requestId}] WEBHOOK_VERIFY_TOKEN não configurado`)
+        await logSecurityEvent(supabaseClient, 'verify_token_missing', { 
+          ip: req.headers.get('x-forwarded-for'),
+          userAgent: req.headers.get('user-agent')
+        }, requestId)
+        return new Response('Verify token not configured', {
+          status: 500,
+          headers: corsHeaders
+        })
+      }
+
+      if (mode === 'subscribe' && token === verifyToken && challenge) {
         console.log(`✅ [${requestId}] Webhook verificado com sucesso!`)
         return new Response(challenge, {
           status: 200,
@@ -56,24 +101,68 @@ serve(async (req) => {
         })
       }
 
-      console.log(`❌ [${requestId}] Parâmetros de verificação inválidos`)
-      return new Response('Missing parameters', {
-        status: 400,
+      console.error(`❌ [${requestId}] Falha na verificação do webhook - token inválido`)
+      await logSecurityEvent(supabaseClient, 'invalid_verify_token', {
+        providedToken: token ? 'presente' : 'ausente',
+        mode,
+        challenge: challenge ? 'presente' : 'ausente',
+        ip: req.headers.get('x-forwarded-for'),
+        userAgent: req.headers.get('user-agent')
+      }, requestId)
+      
+      return new Response('Verification failed', {
+        status: 403,
         headers: corsHeaders
       })
     }
 
     // POST - Processar mensagens
     if (req.method === 'POST') {
+      // Ler o body como texto para validação de assinatura
+      const bodyText = await req.text()
+      
+      // Validar assinatura HMAC se os secrets estão disponíveis
+      const signature = req.headers.get('x-hub-signature-256')
+      if (signature && appSecret) {
+        const isValid = validateWebhookSignature(bodyText, signature, appSecret)
+        if (!isValid) {
+          console.error(`❌ [${requestId}] Assinatura HMAC inválida`)
+          await logSecurityEvent(supabaseClient, 'invalid_signature', {
+            signature: signature ? 'presente' : 'ausente',
+            appSecret: appSecret ? 'configurado' : 'ausente',
+            ip: req.headers.get('x-forwarded-for'),
+            userAgent: req.headers.get('user-agent')
+          }, requestId)
+          
+          // IMPORTANTE: Retornar 200 OK para não travar a fila da Meta
+          return new Response('EVENT_RECEIVED', {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+          })
+        }
+        console.log(`✅ [${requestId}] Assinatura HMAC validada com sucesso`)
+      } else {
+        console.warn(`⚠️ [${requestId}] Validação de assinatura pulada (assinatura: ${signature ? 'presente' : 'ausente'}, app secret: ${appSecret ? 'presente' : 'ausente'})`)
+      }
+
+      // Parse JSON
       let body;
       try {
-        body = await req.json()
+        body = JSON.parse(bodyText)
         console.log(`📱 [${requestId}] Webhook recebido:`, JSON.stringify(body, null, 2))
       } catch (error) {
         console.error(`❌ [${requestId}] Erro ao parsear JSON:`, error)
-        return new Response('Invalid JSON', {
-          status: 400,
-          headers: corsHeaders
+        await logSecurityEvent(supabaseClient, 'invalid_json', {
+          error: error.message,
+          bodyPreview: bodyText.substring(0, 200),
+          ip: req.headers.get('x-forwarded-for'),
+          userAgent: req.headers.get('user-agent')
+        }, requestId)
+        
+        // IMPORTANTE: Retornar 200 OK para não travar a fila da Meta
+        return new Response('EVENT_RECEIVED', {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
         })
       }
 
