@@ -64,7 +64,11 @@ serve(async (req) => {
       const token = url.searchParams.get('hub.verify_token');
       const challenge = url.searchParams.get('hub.challenge');
 
-      console.log(`🔍 [${requestId}] Verificação webhook:`, { mode, token: token ? 'presente' : 'ausente', challenge });
+      console.log(`🔍 [${requestId}] Verificação webhook:`, { 
+        mode, 
+        token: token ? 'presente' : 'ausente', 
+        challenge: challenge ? 'presente' : 'ausente' 
+      });
 
       if (!verifyToken) {
         console.error(`❌ [${requestId}] WEBHOOK_VERIFY_TOKEN não configurado`);
@@ -74,7 +78,23 @@ serve(async (req) => {
         });
       }
 
-      if (mode === 'subscribe' && token === verifyToken && challenge) {
+      // Debug detalhado dos valores
+      console.log(`🔍 [${requestId}] Debug verificação:`);
+      console.log(`   - Token recebido: "${token}" (length: ${token?.length || 0})`);
+      console.log(`   - Token esperado: "${verifyToken.substring(0, 10)}..." (length: ${verifyToken.length})`);
+      console.log(`   - Mode: "${mode}"`);
+      console.log(`   - Challenge: "${challenge?.substring(0, 20)}..."`);
+
+      // Normalizar valores (remover espaços e quebras de linha)
+      const normalizedToken = token?.trim();
+      const normalizedVerifyToken = verifyToken?.trim();
+      
+      console.log(`🔍 [${requestId}] Após normalização:`);
+      console.log(`   - Token normalizado length: ${normalizedToken?.length || 0}`);
+      console.log(`   - VerifyToken normalizado length: ${normalizedVerifyToken?.length || 0}`);
+      console.log(`   - Tokens são iguais: ${normalizedToken === normalizedVerifyToken}`);
+
+      if (mode === 'subscribe' && normalizedToken === normalizedVerifyToken && challenge) {
         console.log(`✅ [${requestId}] Webhook verificado com sucesso!`);
         return new Response(challenge, {
           status: 200,
@@ -85,7 +105,12 @@ serve(async (req) => {
         });
       }
 
-      console.log(`❌ [${requestId}] Falha na verificação do webhook`);
+      // Log detalhado da falha
+      console.error(`❌ [${requestId}] Falha na verificação do webhook`);
+      console.error(`   - Mode válido: ${mode === 'subscribe'}`);
+      console.error(`   - Token válido: ${normalizedToken === normalizedVerifyToken}`);
+      console.error(`   - Challenge presente: ${!!challenge}`);
+      
       return new Response('Verification failed', {
         status: 403,
         headers: corsHeaders
