@@ -137,25 +137,32 @@ CLIENTE: ${conversation.client_name || 'Não informado'} | ${conversation.client
 CONVERSA:
 ${conversationHistory}
 
-Gere um resumo OBJETIVO com:
+Gere um resumo no formato EXATO:
 
-**🎯 INTERESSE:**
-- Produto/serviço específico que o cliente quer
-- Quantidade/capacidade mencionada (se houver)
+**⚡NOVO LEAD:**
 
-**📍 CONTEXTO:**
-- Localização informada
-- Urgência demonstrada
-- Orçamento/prazo mencionado
+- Cliente: ${conversation.client_name || 'Não informado'}
+- WhatsApp: ${conversation.client_phone}
+- Produto: [extrair o produto/serviço específico mencionado na conversa]
 
 **⚡ SITUAÇÃO:**
-- Principal problema ou necessidade do cliente
-- Motivação da compra
+- Principal problema ou necessidade do cliente: [descrever baseado na conversa]
+- Motivação da compra: [extrair da conversa ou "Não informado"]
+- Localização: [cidade/estado se mencionado ou "Não informado"]
+- Urgência demonstrada: [nível de urgência ou "Não informado"]
+- Orçamento/prazo mencionado: [valores/prazos ou "Não informado"]
 
 **📋 PRÓXIMOS PASSOS:**
-- 2-3 ações prioritárias para o vendedor
+1. [primeira ação prioritária baseada na conversa]
+2. [segunda ação prioritária]
+3. [terceira ação se necessário]
 
-Seja direto e objetivo. Use "Não informado" apenas se realmente não houver a informação.`
+INSTRUÇÕES IMPORTANTES:
+- Use EXATAMENTE este formato com os emojis e estrutura
+- No campo "Produto", seja específico (ex: "energia solar com baterias", "chapa Eucatex perfurada")
+- Mantenha o WhatsApp no formato original
+- Seja objetivo e direto
+- Use "Não informado" apenas quando realmente não houver informação`
 
         const aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
