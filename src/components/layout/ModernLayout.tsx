@@ -288,7 +288,7 @@ export const ModernLayout: React.FC<ModernLayoutProps> = ({ children }) => {
         </header>
         
         {/* Content Area - Full Width & Height */}
-        <main className="flex-1 w-full">
+        <main className="flex-1 w-full overflow-auto">
           {children}
         </main>
       </div>

@@ -80,7 +80,7 @@ export const PlatformHealthCheck: React.FC = () => {
   const failedTests = tests.filter(t => t.status === 'error').length;
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-8 max-h-screen overflow-y-auto">
       {/* Header */}
       <Card>
         <CardHeader>
