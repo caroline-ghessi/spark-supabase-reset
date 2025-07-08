@@ -4,6 +4,7 @@ import { MessageSquare, Bot, User } from 'lucide-react';
 import { RealMessage } from '@/types/whatsapp';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { MediaMessage } from './MediaMessage';
 
 interface MessageBubbleProps {
   message: RealMessage;
@@ -55,25 +56,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           </span>
         </div>
         
-        <p className="text-sm">{message.content}</p>
-        
-        {message.file_url && (
-          <div className="mt-2">
-            {message.message_type === 'image' ? (
-              <img
-                src={message.file_url}
-                alt="Imagem"
-                className="max-w-full h-auto rounded"
+        {message.message_type === 'text' ? (
+          <p className="text-sm">{message.content}</p>
+        ) : (
+          <div>
+            {message.content && message.content !== '[Mídia]' && (
+              <p className="text-sm mb-2">{message.content}</p>
+            )}
+            {message.file_url && (
+              <MediaMessage
+                messageType={message.message_type}
+                fileUrl={message.file_url}
+                fileName={message.file_name}
+                fileSize={message.file_size}
+                content={message.content}
+                metadata={message.metadata}
               />
-            ) : (
-              <a
-                href={message.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline text-sm"
-              >
-                📎 {message.file_name || 'Arquivo'}
-              </a>
             )}
           </div>
         )}

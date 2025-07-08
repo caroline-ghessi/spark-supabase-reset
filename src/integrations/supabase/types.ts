@@ -1348,7 +1348,20 @@ export type Database = {
         Args: { user_email: string; seller_phone: string }
         Returns: boolean
       }
+      map_whatsapp_message_type: {
+        Args: { vendor_type: string }
+        Returns: string
+      }
       sync_all_pending_messages: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_processed: number
+          successfully_synced: number
+          already_existed: number
+          errors_count: number
+        }[]
+      }
+      sync_all_vendor_messages: {
         Args: Record<PropertyKey, never>
         Returns: {
           total_processed: number

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Phone, User, Clock, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
+import { MediaMessage } from './chat/MediaMessage';
 
 interface VendorMessage {
   id: string;
@@ -113,29 +114,37 @@ export const VendorChatInterface: React.FC<VendorChatInterfaceProps> = ({
               className={`flex ${message.is_from_seller ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                  message.is_from_seller
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
-              >
-                <p className="text-sm">{message.text_content}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className={`text-xs ${
-                    message.is_from_seller ? 'text-blue-100' : 'text-gray-500'
-                  }`}>
-                    {formatTime(message.sent_at)}
-                  </span>
-                  {message.is_from_seller && (
-                    <Badge
-                      variant="secondary"
-                      className="text-xs ml-2"
-                    >
-                      {message.status}
-                    </Badge>
+                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                    message.is_from_seller
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
+                  {message.text_content ? (
+                    <p className="text-sm">{message.text_content}</p>
+                  ) : (
+                    <p className="text-sm italic text-muted-foreground">[Mensagem de mídia]</p>
                   )}
+                  
+                  {/* Renderizar mídia se houver */}
+                  {/* Note: vendor messages não têm file_url diretamente, mas têm media_url */}
+                  
+                  <div className="flex items-center justify-between mt-1">
+                    <span className={`text-xs ${
+                      message.is_from_seller ? 'text-blue-100' : 'text-gray-500'
+                    }`}>
+                      {formatTime(message.sent_at)}
+                    </span>
+                    {message.is_from_seller && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs ml-2"
+                      >
+                        {message.status}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              </div>
             </div>
           ))
         )}

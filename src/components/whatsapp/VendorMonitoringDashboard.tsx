@@ -64,19 +64,21 @@ export const VendorMonitoringDashboard: React.FC = () => {
     setSelectedConversation(conversation);
   };
 
-  // Função para sincronizar mensagens
+  // Função para sincronizar mensagens retroativamente
   const handleSyncMessages = async () => {
     try {
-      console.log('🔄 Iniciando sincronização de mensagens...');
-      const { data, error } = await supabase.functions.invoke('sync-messages', {
-        body: { action: 'sync_missing', limit: 100 }
-      });
+      console.log('🔄 Iniciando sincronização retroativa de todas as mensagens...');
+      const { data, error } = await supabase.rpc('sync_all_vendor_messages');
       
       if (error) throw error;
       
-      console.log('✅ Sincronização concluída:', data);
-      if (data?.synced > 0) {
-        console.log(`📈 ${data.synced} mensagens sincronizadas com sucesso`);
+      console.log('✅ Sincronização retroativa concluída:', data);
+      if (data?.length > 0) {
+        const result = data[0];
+        console.log(`📈 ${result.successfully_synced} mensagens sincronizadas de ${result.total_processed} processadas`);
+        if (result.errors_count > 0) {
+          console.warn(`⚠️ ${result.errors_count} erros durante a sincronização`);
+        }
       }
       // Recarregar conversas após sincronização
       handleRefresh();
@@ -114,7 +116,7 @@ export const VendorMonitoringDashboard: React.FC = () => {
           <div className="flex space-x-2">
             <Button onClick={handleSyncMessages} variant="outline" size="sm">
               <RefreshCw className="w-4 h-4 mr-2" />
-              Sincronizar Mensagens
+              Sincronizar Todas as Mensagens
             </Button>
             <Button onClick={handleRefresh} variant="outline" size="sm">
               <RefreshCw className={`w-4 h-4 mr-2 ${conversationsLoading ? 'animate-spin' : ''}`} />
