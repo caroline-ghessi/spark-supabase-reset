@@ -140,7 +140,52 @@ export class TestRunner {
     });
   }
 
-  // Teste 5: Edge Function Webhook - CORRIGIDO
+  // Teste 5: Grok AI Integration
+  async testGrokIntegration(): Promise<boolean> {
+    this.updateTestStatus('Integração Grok AI', 'running');
+    try {
+      console.log('🔄 Testando integração Grok AI...');
+      
+      const response = await fetch(
+        'https://hzagithcqoiwybjljgmk.supabase.co/functions/v1/test-grok-integration',
+        { 
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: 'Teste de integração'
+          })
+        }
+      );
+      
+      console.log('📡 Response status:', response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('📡 Response body:', result);
+        
+        if (result.success) {
+          this.updateTestStatus('Integração Grok AI', 'success', 'Grok AI funcionando corretamente');
+          return true;
+        } else {
+          this.updateTestStatus('Integração Grok AI', 'error', `Erro: ${result.error || result.message}`);
+          return false;
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Erro na integração Grok:', errorText);
+        this.updateTestStatus('Integração Grok AI', 'error', `Status ${response.status}: ${errorText}`);
+        return false;
+      }
+    } catch (error: any) {
+      console.error('❌ Erro no teste Grok:', error);
+      this.updateTestStatus('Integração Grok AI', 'error', `Erro: ${error.message}`);
+      return false;
+    }
+  }
+
+  // Teste 6: Edge Function Webhook - CORRIGIDO
   async testWebhookFunction(): Promise<boolean> {
     this.updateTestStatus('Edge Function Webhook', 'running');
     try {
@@ -187,7 +232,7 @@ export class TestRunner {
     }
   }
 
-  // Teste 6: Criar conversa de teste
+  // Teste 7: Criar conversa de teste
   async testCreateConversation(): Promise<boolean> {
     this.updateTestStatus('Criar Conversa Teste', 'running');
     try {
@@ -216,7 +261,7 @@ export class TestRunner {
     }
   }
 
-  // Teste 7: Sistema de notificações
+  // Teste 8: Sistema de notificações
   async testNotifications(): Promise<boolean> {
     this.updateTestStatus('Sistema de Notificações', 'running');
     try {
@@ -244,7 +289,7 @@ export class TestRunner {
     }
   }
 
-  // Teste 8: Limpeza de dados de teste
+  // Teste 9: Limpeza de dados de teste
   async cleanupTestData(): Promise<boolean> {
     this.updateTestStatus('Limpeza de Dados Teste', 'running');
     try {
@@ -283,6 +328,7 @@ export class TestRunner {
       this.testTablesExist.bind(this),
       this.testSellersData.bind(this),
       this.testRealTime.bind(this),
+      this.testGrokIntegration.bind(this),
       this.testWebhookFunction.bind(this),
       this.testCreateConversation.bind(this),
       this.testNotifications.bind(this),

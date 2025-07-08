@@ -6,7 +6,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
+const grokApiKey = Deno.env.get('GROK_API_KEY')
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -154,10 +154,10 @@ ${additionalInfo}`
       })
     }
 
-    // 3. Conversas com mensagens suficientes mas sem OpenAI configurado
-    if (!openAIApiKey) {
-      console.log(`⚠️ [${requestId}] OpenAI não configurado - usando resumo básico melhorado`)
-      let summary = generateBasicSummary('openai_not_configured', '_IA não configurada. Configure o OPENAI_API_KEY nos secrets do Supabase._')
+    // 3. Conversas com mensagens suficientes mas sem Grok configurado
+    if (!grokApiKey) {
+      console.log(`⚠️ [${requestId}] Grok não configurado - usando resumo básico melhorado`)
+      let summary = generateBasicSummary('grok_not_configured', '_IA não configurada. Configure o GROK_API_KEY nos secrets do Supabase._')
       
       // Adicionar análise básica manual para conversas com mais mensagens
       if (messageCount >= 3) {
@@ -174,8 +174,8 @@ ${additionalInfo}`
       return new Response(JSON.stringify({
         success: false,
         summary,
-        error: 'openai_not_configured',
-        details: 'OPENAI_API_KEY não está configurado'
+        error: 'grok_not_configured',
+        details: 'GROK_API_KEY não está configurado'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -207,20 +207,21 @@ Gere um resumo focado em:
 
 Seja direto e objetivo (máximo 200 palavras).`
 
-        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        const aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
+            'Authorization': `Bearer ${grokApiKey}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'grok-3-latest',
             messages: [
               { role: 'system', content: 'Você é um assistente especializado em resumos comerciais concisos.' },
               { role: 'user', content: basicPrompt }
             ],
             max_tokens: 500,
-            temperature: 0.3
+            temperature: 0.3,
+            stream: false
           })
         })
 
@@ -249,7 +250,7 @@ _Resumo gerado automaticamente para conversa inicial com ${messageCount} mensage
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
         } else {
-          throw new Error(`OpenAI API Error: ${aiResponse.status}`)
+          throw new Error(`Grok API Error: ${aiResponse.status}`)
         }
       } catch (error) {
         console.log(`❌ [${requestId}] Erro no resumo básico IA:`, error)
@@ -335,20 +336,21 @@ INSTRUÇÃO CRÍTICA: Analise cada mensagem em busca de informações comerciais
 
 FORMATO: Use tópicos claros e diretos. Se alguma informação NÃO foi mencionada, escreva "Não informado" - mas procure TODAS as pistas no histórico.`
 
-        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        const aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
+            'Authorization': `Bearer ${grokApiKey}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'grok-3-latest',
             messages: [
               { role: 'system', content: 'Você é um especialista em vendas e atendimento ao cliente.' },
               { role: 'user', content: summaryPrompt }
             ],
             max_tokens: 2000,
-            temperature: 0.7
+            temperature: 0.7,
+            stream: false
           })
         })
 
@@ -359,7 +361,7 @@ FORMATO: Use tópicos claros e diretos. Se alguma informação NÃO foi menciona
         } else {
           const errorText = await aiResponse.text()
           console.log(`❌ [${requestId}] Falha na API OpenAI (${aiResponse.status}):`, errorText)
-          throw new Error(`OpenAI API Error: ${aiResponse.status} - ${errorText}`)
+          throw new Error(`Grok API Error: ${aiResponse.status} - ${errorText}`)
         }
       } catch (aiError) {
         console.log(`❌ [${requestId}] Erro na geração do resumo IA:`, aiError)

@@ -11,6 +11,7 @@ import { TestRunner } from './TestRunner';
 import { TestResultsCard } from './TestResultsCard';
 import { TestSummaryCard } from './TestSummaryCard';
 import { DifyConnectionTest } from '@/components/whatsapp/DifyConnectionTest';
+import { GrokConnectionTest } from '@/components/whatsapp/GrokConnectionTest';
 
 export const PlatformHealthCheck: React.FC = () => {
   const [tests, setTests] = useState<TestResult[]>([
@@ -18,6 +19,7 @@ export const PlatformHealthCheck: React.FC = () => {
     { name: 'Verificar Tabelas', status: 'pending' },
     { name: 'Dados de Vendedores', status: 'pending' },
     { name: 'Real-time Subscriptions', status: 'pending' },
+    { name: 'Integração Grok AI', status: 'pending' },
     { name: 'Edge Function Webhook', status: 'pending' },
     { name: 'Criar Conversa Teste', status: 'pending' },
     { name: 'Sistema de Notificações', status: 'pending' },
@@ -100,10 +102,14 @@ export const PlatformHealthCheck: React.FC = () => {
 
       {/* Abas de Testes */}
       <Tabs defaultValue="platform" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="platform" className="flex items-center space-x-2">
             <Activity className="w-4 h-4" />
             <span>Testes Plataforma</span>
+          </TabsTrigger>
+          <TabsTrigger value="grok" className="flex items-center space-x-2">
+            <Bot className="w-4 h-4" />
+            <span>Testes Grok AI</span>
           </TabsTrigger>
           <TabsTrigger value="dify" className="flex items-center space-x-2">
             <Bot className="w-4 h-4" />
@@ -173,6 +179,11 @@ export const PlatformHealthCheck: React.FC = () => {
 
           {/* Resultado Final */}
           <TestSummaryCard tests={tests} overallStatus={overallStatus} />
+        </TabsContent>
+
+        <TabsContent value="grok" className="space-y-6">
+          {/* Testes do Grok AI */}
+          <GrokConnectionTest />
         </TabsContent>
 
         <TabsContent value="dify" className="space-y-6">
