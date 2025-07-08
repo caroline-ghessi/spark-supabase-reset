@@ -61,49 +61,7 @@ serve(async (req) => {
 
     console.log(`🔄 [${requestId}] Transferindo conversa ${conversation_id} para vendedor ${seller.name} (${seller.whatsapp_number})`)
 
-    // 1. Gerar resumo com IA usando a nova função otimizada
-    let aiSummary = ''
-    try {
-      console.log(`🤖 [${requestId}] Gerando resumo da conversa com IA...`)
-      
-      const { data: summaryData, error: summaryError } = await supabase.functions.invoke('generate-conversation-summary', {
-        body: {
-          conversation_id: conversation_id
-        }
-      });
-
-      if (summaryError) {
-        console.log(`⚠️ [${requestId}] Erro na função de resumo:`, summaryError);
-        throw summaryError;
-      }
-      
-      if (summaryData?.success === false) {
-        console.warn(`⚠️ [${requestId}] Função retornou erro:`, summaryData);
-        throw new Error(summaryData.message || 'Falha na geração do resumo');
-      } else {
-        aiSummary = summaryData.summary || 'Resumo não disponível';
-        console.log(`✅ [${requestId}] Resumo IA gerado com sucesso`);
-      }
-    } catch (summaryError) {
-      console.log(`⚠️ [${requestId}] Erro na geração do resumo IA:`, summaryError);
-      aiSummary = 'Erro ao gerar resumo. Verifique o histórico completo de mensagens na plataforma.';
-    }
-
-    // 2. CORREÇÃO: Verificar se Rodri.GO está disponível com número atualizado
-    const { data: rodrigoBot, error: rodrigoErr } = await supabase
-      .from('sellers')
-      .select('id, name, whatsapp_number')
-      .eq('whatsapp_number', '5551981155622') // Número corrigido
-      .single()
-
-    if (rodrigoErr || !rodrigoBot) {
-      console.error(`❌ [${requestId}] Rodri.GO não encontrado:`, rodrigoErr)
-      throw new Error('Rodri.GO não encontrado para centralizar comunicações')
-    }
-
-    console.log(`🤖 [${requestId}] Rodri.GO encontrado: ${rodrigoBot.name} (${rodrigoBot.whatsapp_number})`)
-
-    // 3. Atualizar conversa
+    // 1. Atualizar conversa primeiro (rápido)
     const { error: updateError } = await supabase
       .from('conversations')
       .update({
@@ -120,26 +78,45 @@ serve(async (req) => {
 
     console.log(`✅ [${requestId}] Conversa atualizada: status=manual, seller=${seller.name}`)
 
-    // 4. Enviar notificação via Rodri.GO (centralizada) com novo formato
-    const notificationMessage = `🔔 *NOVO LEAD TRANSFERIDO*
+    // 2. Gerar resumo básico (sem IA para evitar timeout)
+    let summaryMessage = `🔔 *NOVO LEAD TRANSFERIDO*
 
-${aiSummary ? `${aiSummary}\n\n` : ''}
+📋 *Cliente:* ${conversation.client_name || 'Nome não informado'}
+📱 *WhatsApp:* ${conversation.client_phone}
+🌡️ *Temperatura:* ${conversation.lead_temperature || 'Não definida'}
+💰 *Valor Potencial:* ${conversation.potential_value ? `R$ ${conversation.potential_value}` : 'Não informado'}
 
-${transfer_note ? `📝 *Nota da Transferência:*\n${transfer_note}\n\n` : ''}
-
-🔗 *Acesse a plataforma para ver o histórico completo e continuar o atendimento.*
+${transfer_note ? `📝 *Nota da Transferência:*\n${transfer_note}\n\n` : ''}🔗 *Acesse a plataforma para ver o histórico completo e continuar o atendimento.*
 
 _Lead transferido automaticamente pelo sistema._`
 
+    // 3. Verificar se Rodri.GO está disponível com número atualizado
+    const { data: rodrigoBot, error: rodrigoErr } = await supabase
+      .from('sellers')
+      .select('id, name, whatsapp_number')
+      .eq('whatsapp_number', '5551981155622') // Número corrigido
+      .single()
+
+    if (rodrigoErr || !rodrigoBot) {
+      console.error(`❌ [${requestId}] Rodri.GO não encontrado:`, rodrigoErr)
+      throw new Error('Rodri.GO não encontrado para centralizar comunicações')
+    }
+
+    console.log(`🤖 [${requestId}] Rodri.GO encontrado: ${rodrigoBot.name} (${rodrigoBot.whatsapp_number})`)
+
+    // 4. Enviar notificação via Rodri.GO com timeout de 8 segundos
     let notificationSent = false
     try {
       console.log(`📱 [${requestId}] Enviando notificação via Rodri.GO para ${seller.name} (${seller.whatsapp_number})`)
       
-      // SEMPRE usar Rodri.GO para centralizar comunicações
-      const { data: sendResult, error: sendError } = await supabase.functions.invoke('rodrigo-send-message', {
+      // Usar timeout menor para evitar 504
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
+      
+      const sendPromise = supabase.functions.invoke('rodrigo-send-message', {
         body: {
           to_number: seller.whatsapp_number,
-          message: notificationMessage,
+          message: summaryMessage,
           context_type: 'notification',
           metadata: {
             conversation_id: conversation_id,
@@ -151,6 +128,15 @@ _Lead transferido automaticamente pelo sistema._`
           }
         }
       })
+      
+      const { data: sendResult, error: sendError } = await Promise.race([
+        sendPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout na chamada rodrigo-send-message')), 8000)
+        )
+      ]) as any
+      
+      clearTimeout(timeoutId)
 
       if (sendError) {
         console.error(`❌ [${requestId}] Falha ao enviar via Rodri.GO:`, sendError)

@@ -87,75 +87,96 @@ serve(async (req) => {
 
     console.log(`📊 [${requestId}] Dados Whapi:`, JSON.stringify(whapiData, null, 2))
 
-    // Enviar via Whapi usando token dos secrets
-    const whapiResponse = await fetch('https://gate.whapi.cloud/messages/text', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${rodrigoWhapiToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(whapiData)
+    // Enviar via Whapi com timeout de 10 segundos
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+    
+    let whapiResponse
+    try {
+      whapiResponse = await fetch('https://gate.whapi.cloud/messages/text', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${rodrigoWhapiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(whapiData),
+        signal: controller.signal
+      })
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      console.error(`❌ [${requestId}] Erro de rede/timeout Whapi:`, fetchError)
+      throw new Error(`Falha de conectividade Whapi: ${fetchError.message}`)
+    }
+    
+    clearTimeout(timeoutId)
+    
+    let responseText = ''
+    try {
+      responseText = await whapiResponse.text()
+    } catch (textError) {
+      console.error(`❌ [${requestId}] Erro ao ler resposta:`, textError)
+      throw new Error('Erro ao processar resposta da API Whapi')
+    }
+    
+    console.log(`📥 [${requestId}] Resposta Whapi:`, {
+      status: whapiResponse.status,
+      headers: Object.fromEntries(whapiResponse.headers.entries()),
+      body: responseText.substring(0, 500) + (responseText.length > 500 ? '...' : '')
     })
 
-    const responseText = await whapiResponse.text()
-    console.log(`📥 [${requestId}] Resposta Whapi RAW:`, responseText)
-
     if (!whapiResponse.ok) {
-      console.error(`❌ [${requestId}] Erro na resposta Whapi:`, {
+      console.error(`❌ [${requestId}] Erro HTTP Whapi:`, {
         status: whapiResponse.status,
         statusText: whapiResponse.statusText,
         error: responseText,
-        url: 'https://gate.whapi.cloud/messages/text',
-        data: whapiData,
-        token_start: rodrigoWhapiToken?.substring(0, 10) + '...'
+        request_data: whapiData
       })
 
-      // Criar alerta crítico para falha de envio
-      await supabase.functions.invoke('send-management-alert', {
-        body: {
-          alert_type: 'rodrigo_whapi_failure',
-          severity: 'critical',
-          message: `Falha no envio via Rodri.GO: ${whapiResponse.status} - ${responseText}`,
-          context: {
-            to_number: formattedNumber,
-            context_type,
-            error_status: whapiResponse.status,
-            error_message: responseText
-          }
-        }
-      }).catch(e => console.error('Erro ao enviar alerta:', e))
-
-      throw new Error(`Erro Whapi: ${whapiResponse.status} - ${responseText}`)
+      throw new Error(`Erro Whapi HTTP ${whapiResponse.status}: ${responseText}`)
     }
 
+    // Parse da resposta com validação robusta
     let whapiResult
     try {
+      if (!responseText.trim()) {
+        throw new Error('Resposta vazia da API Whapi')
+      }
+      
       whapiResult = JSON.parse(responseText)
+      
+      if (!whapiResult || typeof whapiResult !== 'object') {
+        throw new Error('Resposta não é um objeto JSON válido')
+      }
     } catch (parseError) {
-      console.error(`❌ [${requestId}] Erro ao parsear resposta JSON:`, parseError)
-      throw new Error('Resposta Whapi inválida - não é JSON válido')
+      console.error(`❌ [${requestId}] Erro JSON parsing:`, {
+        error: parseError.message,
+        response_text: responseText,
+        response_length: responseText.length
+      })
+      throw new Error(`Resposta Whapi inválida: ${parseError.message}`)
     }
     
-    console.log(`✅ [${requestId}] Mensagem enviada via Rodri.GO:`, whapiResult)
+    console.log(`✅ [${requestId}] Resposta Whapi parseada:`, whapiResult)
     
-    if (!whapiResult.id) {
-      console.error(`⚠️ [${requestId}] Resposta Whapi sem message_id:`, whapiResult)
+    // Validação do message_id com diferentes formatos possíveis
+    const messageId = whapiResult.id || whapiResult.message_id || whapiResult.messageId
+    
+    if (!messageId) {
+      console.error(`⚠️ [${requestId}] Resposta sem message_id:`, {
+        response: whapiResult,
+        available_keys: Object.keys(whapiResult)
+      })
       
-      // Alerta para resposta sem ID
-      await supabase.functions.invoke('send-management-alert', {
-        body: {
-          alert_type: 'rodrigo_missing_message_id',
-          severity: 'high',
-          message: `Rodri.GO: Resposta Whapi sem message_id para ${formattedNumber}`,
-          context: {
-            to_number: formattedNumber,
-            context_type,
-            whapi_response: whapiResult
-          }
-        }
-      }).catch(e => console.error('Erro ao enviar alerta:', e))
-
-      throw new Error('Resposta Whapi inválida - sem message_id')
+      // Se tem sent=true ou status=success, considerar como enviado mesmo sem ID
+      if (whapiResult.sent === true || whapiResult.status === 'success' || whapiResult.success === true) {
+        console.log(`✅ [${requestId}] Mensagem considerada enviada apesar de não ter ID`)
+        whapiResult.id = `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      } else {
+        throw new Error('Resposta Whapi sem identificador de mensagem válido')
+      }
+    } else {
+      // Normalizar o ID para o campo padrão
+      whapiResult.id = messageId
     }
 
     // Salvar log da comunicação com status correto
