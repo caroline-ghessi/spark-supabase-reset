@@ -10,7 +10,7 @@ import { DashboardAlerts } from './dashboard/DashboardAlerts';
 import { DashboardStats } from './dashboard/DashboardStats';
 import { DashboardContent } from './dashboard/DashboardContent';
 import { EmptyStateMessage } from './dashboard/EmptyStateMessage';
-import { WebhookTestPanel } from './WebhookTestPanel';
+import { SellerRecommendation } from './SellerRecommendation';
 
 export const WhatsAppDashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -181,7 +181,7 @@ export const WhatsAppDashboard: React.FC = () => {
                 />
               </div>
               <div className="w-80 flex-shrink-0 overflow-y-auto">
-                <WebhookTestPanel />
+                <SellerRecommendation selectedConversation={selectedConversation} />
               </div>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { WhapiTestPanel } from '@/components/whatsapp/WhapiTestPanel';
 import { IntegrationTestPanel } from '@/components/whatsapp/IntegrationTestPanel';
 import { DifyConnectionTest } from '@/components/whatsapp/DifyConnectionTest';
 import { GrokConnectionTest } from '@/components/whatsapp/GrokConnectionTest';
+import { WhatsAppTestPanel } from '@/components/whatsapp/WhatsAppTestPanel';
 
 export default function DevTools() {
   return (
@@ -32,9 +33,10 @@ export default function DevTools() {
         {/* Content */}
         <div className="flex-1 p-4 overflow-y-auto">
           <Tabs defaultValue="health" className="w-full h-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-6 mb-6 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-7 mb-6 flex-shrink-0">
               <TabsTrigger value="health">Health Check</TabsTrigger>
               <TabsTrigger value="whapi">Whapi Debug</TabsTrigger>
+              <TabsTrigger value="whatsapp">WhatsApp Debug</TabsTrigger>
               <TabsTrigger value="integration">Integração</TabsTrigger>
               <TabsTrigger value="grok">Grok AI</TabsTrigger>
               <TabsTrigger value="dify">Dify Bot</TabsTrigger>
@@ -48,6 +50,10 @@ export default function DevTools() {
 
               <TabsContent value="whapi" className="w-full">
                 <WhapiTestPanel />
+              </TabsContent>
+
+              <TabsContent value="whatsapp" className="w-full">
+                <WhatsAppTestPanel />
               </TabsContent>
 
               <TabsContent value="integration" className="w-full">
