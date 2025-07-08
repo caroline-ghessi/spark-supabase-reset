@@ -1348,6 +1348,15 @@ export type Database = {
         Args: { user_email: string; seller_phone: string }
         Returns: boolean
       }
+      sync_retroactive_messages: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_processed: number
+          successfully_synced: number
+          already_existed: number
+          errors_count: number
+        }[]
+      }
       test_conversations_without_messages: {
         Args: Record<PropertyKey, never>
         Returns: {
