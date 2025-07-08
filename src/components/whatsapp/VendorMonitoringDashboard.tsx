@@ -69,12 +69,15 @@ export const VendorMonitoringDashboard: React.FC = () => {
     try {
       console.log('🔄 Iniciando sincronização de mensagens...');
       const { data, error } = await supabase.functions.invoke('sync-messages', {
-        body: { action: 'sync_missing', limit: 1000 }
+        body: { action: 'sync_missing', limit: 100 }
       });
       
       if (error) throw error;
       
       console.log('✅ Sincronização concluída:', data);
+      if (data?.synced > 0) {
+        console.log(`📈 ${data.synced} mensagens sincronizadas com sucesso`);
+      }
       // Recarregar conversas após sincronização
       handleRefresh();
     } catch (error) {

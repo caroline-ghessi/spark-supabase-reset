@@ -1357,6 +1357,14 @@ export type Database = {
           errors_count: number
         }[]
       }
+      sync_recent_messages_batch: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          batch_processed: number
+          batch_synced: number
+          batch_errors: number
+        }[]
+      }
       sync_retroactive_messages: {
         Args: Record<PropertyKey, never>
         Returns: {

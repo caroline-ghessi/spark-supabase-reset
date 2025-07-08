@@ -71,24 +71,16 @@ async function syncMissingMessages(requestId: string, limit: number) {
   console.log(`🔄 [${requestId}] Sincronizando mensagens em falta...`)
 
   try {
-    // Buscar mensagens de vendor_whatsapp_messages que não existem em messages
+    // Buscar mensagens vendor das últimas 24h que não existem em messages - abordagem simplificada
     const { data: vendorMessages, error: vendorError } = await supabase
       .from('vendor_whatsapp_messages')
       .select(`
         *,
-        conversations!inner(id, status, source),
         sellers!inner(id, name)
       `)
-      .not('whapi_message_id', 'in', `(${
-        // Subquery para buscar whatsapp_message_ids já existentes em messages
-        await supabase
-          .from('messages')
-          .select('whatsapp_message_id')
-          .not('whatsapp_message_id', 'is', null)
-          .then(({ data }) => data?.map(m => `'${m.whatsapp_message_id}'`).join(',') || "''")
-      })`)
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .order('sent_at', { ascending: false })
-      .limit(limit)
+      .limit(Math.min(limit, 100))
 
     if (vendorError) {
       console.error(`❌ [${requestId}] Erro ao buscar mensagens vendor:`, vendorError)
@@ -109,10 +101,23 @@ async function syncMissingMessages(requestId: string, limit: number) {
 
     let synced = 0
     let errors = 0
+    let skipped = 0
 
     // Sincronizar cada mensagem
     for (const vendorMsg of vendorMessages) {
       try {
+        // Verificar se a mensagem já existe
+        const { data: existingMessage } = await supabase
+          .from('messages')
+          .select('id')
+          .eq('whatsapp_message_id', vendorMsg.whapi_message_id)
+          .single()
+
+        if (existingMessage) {
+          skipped++
+          continue
+        }
+
         const unifiedMessageData = {
           conversation_id: vendorMsg.conversation_id,
           sender_type: vendorMsg.is_from_seller ? 'seller' : 'client',
@@ -130,6 +135,7 @@ async function syncMissingMessages(requestId: string, limit: number) {
             seller_id: vendorMsg.seller_id,
             original_timestamp: vendorMsg.sent_at,
             source: 'whapi',
+            edge_function_sync: true,
             synced_at: new Date().toISOString()
           }
         }
@@ -152,11 +158,12 @@ async function syncMissingMessages(requestId: string, limit: number) {
       }
     }
 
-    console.log(`✅ [${requestId}] Sincronização concluída: ${synced} sucesso, ${errors} erros`)
+    console.log(`✅ [${requestId}] Sincronização concluída: ${synced} sucesso, ${skipped} puladas, ${errors} erros`)
 
     return new Response(JSON.stringify({ 
       message: 'Sincronização concluída',
       synced,
+      skipped,
       errors,
       total_processed: vendorMessages.length
     }), {
