@@ -118,7 +118,7 @@ export const WhatsAppDashboard: React.FC = () => {
   }, [isRealUser]);
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden">
+    <div className="h-screen w-full flex flex-col overflow-hidden">
       {/* Header Compacto */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200">
         <div className="p-2">
@@ -149,11 +149,11 @@ export const WhatsAppDashboard: React.FC = () => {
       </div>
 
       {/* Interface Principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         {isRealUser ? (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
             {/* Indicador de que estamos vendo apenas API Oficial */}
-            <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
+            <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -167,8 +167,8 @@ export const WhatsAppDashboard: React.FC = () => {
               </div>
             </div>
             
-            <div className="flex-1 flex space-x-4 overflow-hidden">
-              <div className="flex-1">
+            <div className="flex-1 flex overflow-hidden min-h-0">
+              <div className="flex-1 min-w-0">
                 <DashboardContent
                   conversations={conversations}
                   selectedConversation={selectedConversation}
@@ -180,9 +180,11 @@ export const WhatsAppDashboard: React.FC = () => {
                   onRefresh={loadConversations}
                 />
               </div>
-              <div className="w-80 flex-shrink-0 overflow-y-auto">
-                <SellerRecommendation selectedConversation={selectedConversation} />
-              </div>
+              {selectedConversation && (
+                <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-gray-50">
+                  <SellerRecommendation selectedConversation={selectedConversation} />
+                </div>
+              )}
             </div>
           </div>
         ) : (

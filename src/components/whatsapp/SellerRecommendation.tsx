@@ -231,17 +231,18 @@ export const SellerRecommendation: React.FC<SellerRecommendationProps> = ({
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Target className="w-5 h-5" />
-            <span>Recomendação de Vendedor</span>
-          </CardTitle>
-          <p className="text-sm text-gray-600">
-            Para: {selectedConversation.client_name} ({selectedConversation.client_phone})
-          </p>
-        </CardHeader>
-        <CardContent>
+      <div className="h-full flex flex-col">
+        <Card className="flex-1 flex flex-col m-4 max-h-[calc(100vh-200px)]">
+          <CardHeader className="flex-shrink-0">
+            <CardTitle className="flex items-center space-x-2">
+              <Target className="w-5 h-5" />
+              <span>Recomendação de Vendedor</span>
+            </CardTitle>
+            <p className="text-sm text-gray-600">
+              Para: {selectedConversation.client_name} ({selectedConversation.client_phone})
+            </p>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-y-auto min-h-0">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
@@ -334,8 +335,9 @@ export const SellerRecommendation: React.FC<SellerRecommendationProps> = ({
               <p className="text-sm">Nenhum vendedor disponível no momento</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       <SimpleTransferModal
         isOpen={isTransferModalOpen}

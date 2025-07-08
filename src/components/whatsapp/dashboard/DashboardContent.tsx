@@ -28,7 +28,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
   onRefresh
 }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex-1 flex mx-2 my-2 h-full max-h-[calc(100vh-200px)]">
+    <div className="bg-white shadow-sm border border-gray-100 overflow-hidden flex-1 flex h-full">
       <div className="flex h-full w-full">
         {/* Lista de Conversas com altura fixa */}
         <div className="w-full sm:w-80 lg:w-96 border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
