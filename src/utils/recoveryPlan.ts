@@ -2,24 +2,49 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export async function executeRecoveryPlan() {
-  console.log('🚀 Iniciando plano de recuperação...');
+  console.log('🚀 Iniciando plano de recuperação COMPLETO...');
   
   try {
-    // 1. Primeiro executar health check
-    console.log('🏥 Executando health check...');
-    const { data: healthData, error: healthError } = await supabase.functions.invoke('webhook-health-check');
+    // FASE 1: DIAGNÓSTICO PROFUNDO
+    console.log('🔍 FASE 1: Executando diagnóstico completo...');
+    const { data: diagnosisData, error: diagnosisError } = await supabase.functions.invoke('complete-dify-diagnosis');
     
-    if (healthError) {
-      console.error('❌ Erro no health check:', healthError);
-      toast.error('Erro no health check');
+    if (diagnosisError) {
+      console.error('❌ Erro no diagnóstico:', diagnosisError);
+      toast.error('Erro no diagnóstico completo');
       return false;
     }
     
-    console.log('🏥 Health check concluído:', healthData?.status);
+    console.log('🔍 Diagnóstico concluído:', diagnosisData?.status);
+    toast.info(`🔍 Diagnóstico: ${diagnosisData?.status} - ${diagnosisData?.critical_issues?.length || 0} problemas críticos`);
     
-    // 2. Se o health check passou, executar reprocessamento
-    if (healthData?.status === 'healthy' || healthData?.status === 'warning') {
-      console.log('🔄 Executando reprocessamento de mensagens perdidas...');
+    // FASE 2: RECOVERY EMERGENCIAL SE NECESSÁRIO
+    if (diagnosisData?.status === 'critical' || diagnosisData?.status === 'degraded') {
+      console.log('🚨 FASE 2: Executando recovery emergencial...');
+      toast.warning('🚨 Problemas críticos detectados. Iniciando recovery emergencial...');
+      
+      const { data: recoveryData, error: recoveryError } = await supabase.functions.invoke('emergency-dify-recovery');
+      
+      if (recoveryError) {
+        console.error('❌ Erro no recovery emergencial:', recoveryError);
+        toast.error('Erro no recovery emergencial');
+        return false;
+      }
+      
+      console.log('🚨 Recovery emergencial concluído:', recoveryData);
+      
+      if (recoveryData?.stats?.conversationsFixed?.length > 0) {
+        toast.success(`✅ Recovery concluído! ${recoveryData.stats.conversationsFixed.length} conversas corrigidas`);
+      } else {
+        toast.warning('⚠️ Recovery executado mas nenhuma conversa foi corrigida');
+      }
+      
+      return true;
+    }
+    
+    // FASE 3: REPROCESSAMENTO PADRÃO SE STATUS OK
+    if (diagnosisData?.status === 'healthy' || diagnosisData?.status === 'warning') {
+      console.log('🔄 FASE 3: Executando reprocessamento padrão...');
       
       const { data: reprocessData, error: reprocessError } = await supabase.functions.invoke('reprocess-lost-messages');
       
@@ -34,15 +59,16 @@ export async function executeRecoveryPlan() {
       if (reprocessData?.summary?.successful > 0) {
         toast.success(`✅ Plano de recuperação concluído! ${reprocessData.summary.successful} mensagens reprocessadas`);
       } else {
-        toast.info('ℹ️ Nenhuma mensagem precisou ser reprocessada');
+        toast.info('ℹ️ Sistema funcionando - nenhuma mensagem precisou ser reprocessada');
       }
       
       return true;
-    } else {
-      console.warn('⚠️ Sistema ainda com problemas:', healthData?.issues);
-      toast.warning('Sistema ainda apresenta problemas. Verifique a configuração do Dify.');
-      return false;
     }
+    
+    // Se chegou aqui, status desconhecido
+    console.warn('⚠️ Status do sistema desconhecido:', diagnosisData?.status);
+    toast.warning('⚠️ Status do sistema desconhecido. Verifique os logs.');
+    return false;
     
   } catch (error) {
     console.error('❌ Erro crítico no plano de recuperação:', error);

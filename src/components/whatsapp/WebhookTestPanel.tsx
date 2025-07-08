@@ -201,7 +201,7 @@ export const WebhookTestPanel: React.FC = () => {
             className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-700"
           >
             <RefreshCw className={`w-4 h-4 ${healthChecking || reprocessing ? 'animate-spin' : ''}`} />
-            <span>🚀 EXECUTAR PLANO DE RECUPERAÇÃO</span>
+            <span>🔍 EXECUTAR DIAGNÓSTICO E RECOVERY COMPLETO</span>
           </Button>
           
           <Button 
