@@ -6,14 +6,27 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+// Token do Rodri.GO dos secrets para segurança
+const rodrigoWhapiToken = Deno.env.get('RODRIGO_WHAPI_TOKEN')
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 console.log('🤖 Rodri.GO Send Message Function iniciada!')
 
 serve(async (req) => {
   const requestId = crypto.randomUUID().substring(0, 8)
   console.log(`📤 [${requestId}] ${req.method} ${req.url}`)
 
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
   }
 
   try {
@@ -30,19 +43,20 @@ serve(async (req) => {
       throw new Error('Parâmetros obrigatórios: to_number, message')
     }
 
-    // Buscar dados do Rodri.GO
+    // Verificar se o token do Rodri.GO está configurado nos secrets
+    if (!rodrigoWhapiToken) {
+      throw new Error('Token Whapi do Rodri.GO não configurado nos secrets')
+    }
+
+    // Buscar dados do Rodri.GO para logs
     const { data: rodrigo, error: rodrigoError } = await supabase
       .from('sellers')
-      .select('*')
+      .select('id, name')
       .eq('whatsapp_number', '5194916150')
       .single()
 
     if (rodrigoError || !rodrigo) {
       throw new Error('Rodri.GO não encontrado na base de dados')
-    }
-
-    if (!rodrigo.whapi_token) {
-      throw new Error('Token Whapi não configurado para Rodri.GO')
     }
 
     console.log(`🤖 [${requestId}] Enviando mensagem via Rodri.GO para: ${to_number}`)
@@ -60,11 +74,11 @@ serve(async (req) => {
       delete whapiData.body
     }
 
-    // Enviar via Whapi
+    // Enviar via Whapi usando token dos secrets
     const whapiResponse = await fetch('https://gate.whapi.cloud/messages/text', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${rodrigo.whapi_token}`,
+        'Authorization': `Bearer ${rodrigoWhapiToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(whapiData)
@@ -109,11 +123,14 @@ serve(async (req) => {
       sender: 'Rodri.GO',
       context_type: context_type
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
     console.error(`❌ [${requestId}] Erro:`, error)
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    })
   }
 })

@@ -17,7 +17,6 @@ interface VendorConversation {
   total_messages: number;
   seller_messages: number;
   client_messages: number;
-  whapi_status: string;
 }
 
 interface VendorConversationsListProps {

@@ -10,7 +10,7 @@ import { VendorConversationsList } from './VendorConversationsList';
 import { VendorChatInterface } from './VendorChatInterface';
 import { supabase } from '@/integrations/supabase/client';
 
-// Usar o tipo do useVendorConversations que é compatível com a view
+// Usar o tipo atualizado sem whapi_status (removido por segurança)
 type VendorConversation = {
   conversation_id: string;
   client_phone: string;
@@ -23,7 +23,6 @@ type VendorConversation = {
   total_messages: number;
   seller_messages: number;
   client_messages: number;
-  whapi_status: string;
   avg_quality_score?: number;
 };
 

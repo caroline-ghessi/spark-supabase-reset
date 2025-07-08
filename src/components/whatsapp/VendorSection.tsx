@@ -16,7 +16,6 @@ interface VendorConversation {
   total_messages: number;
   seller_messages: number;
   client_messages: number;
-  whapi_status: string;
   avg_quality_score?: number;
 }
 
@@ -150,9 +149,9 @@ export const VendorSection: React.FC<VendorSectionProps> = ({
                     </div>
                     <Badge
                       variant="secondary"
-                      className={`text-xs ${getStatusColor(conversation.whapi_status)}`}
+                      className="text-xs bg-green-100 text-green-800"
                     >
-                      {conversation.whapi_status}
+                      Via Rodri.GO
                     </Badge>
                   </div>
                 </div>

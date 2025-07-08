@@ -1021,11 +1021,6 @@ export type Database = {
           specialties: string[] | null
           status: string | null
           updated_at: string | null
-          whapi_instance_id: string | null
-          whapi_last_sync: string | null
-          whapi_status: string | null
-          whapi_token: string | null
-          whapi_webhook_url: string | null
           whatsapp_number: string
           work_schedule: Json | null
         }
@@ -1047,11 +1042,6 @@ export type Database = {
           specialties?: string[] | null
           status?: string | null
           updated_at?: string | null
-          whapi_instance_id?: string | null
-          whapi_last_sync?: string | null
-          whapi_status?: string | null
-          whapi_token?: string | null
-          whapi_webhook_url?: string | null
           whatsapp_number: string
           work_schedule?: Json | null
         }
@@ -1073,11 +1063,6 @@ export type Database = {
           specialties?: string[] | null
           status?: string | null
           updated_at?: string | null
-          whapi_instance_id?: string | null
-          whapi_last_sync?: string | null
-          whapi_status?: string | null
-          whapi_token?: string | null
-          whapi_webhook_url?: string | null
           whatsapp_number?: string
           work_schedule?: Json | null
         }
@@ -1354,7 +1339,6 @@ export type Database = {
           seller_name: string | null
           total_messages: number | null
           updated_at: string | null
-          whapi_status: string | null
         }
         Relationships: []
       }

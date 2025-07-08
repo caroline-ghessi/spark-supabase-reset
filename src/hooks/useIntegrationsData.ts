@@ -46,22 +46,22 @@ export const useIntegrationsData = () => {
   const loadIntegrationsData = async () => {
     setLoading(true);
     try {
-      // Buscar dados dos vendedores para W-API
+      // Buscar dados dos vendedores para W-API (agora centralizado via Rodri.GO)
       const { data: sellers, error: sellersError } = await supabase
         .from('sellers')
-        .select('name, whapi_status, whapi_instance_id, whapi_last_sync');
+        .select('name, status');
 
       if (sellersError) {
         console.error('Erro ao carregar vendedores:', sellersError);
       }
 
-      // Processar dados dos vendedores para W-API
+      // Processar dados dos vendedores para W-API (agora centralizado via Rodri.GO)
       const wapiConfig: Record<string, string> = {};
       if (sellers) {
         sellers.forEach(seller => {
-          const name = seller.name; // Manter nome original
-          const status = seller.whapi_status === 'active' ? 'conectado' : 'desconectado';
-          wapiConfig[name] = status;
+          const name = seller.name;
+          const status = seller.status === 'active' ? 'conectado' : 'desconectado';
+          wapiConfig[name] = `${status} (via Rodri.GO)`;
         });
       }
 
@@ -169,15 +169,18 @@ export const useIntegrationsData = () => {
 
   const testWAPIConnections = async (): Promise<boolean> => {
     try {
-      // Verificar status dos vendedores
-      const { data: sellers, error } = await supabase
-        .from('sellers')
-        .select('whapi_status, whapi_last_sync')
-        .eq('whapi_status', 'active');
+      // Testar comunicação centralizada via Rodri.GO
+      const { data, error } = await supabase.functions.invoke('rodrigo-send-message', {
+        body: { 
+          to_number: '5194916150', // Teste para o próprio Rodri.GO
+          message: 'Teste de conectividade W-API centralizada',
+          context_type: 'test'
+        }
+      });
 
-      return !error && sellers && sellers.length > 0;
+      return !error && data?.success;
     } catch (error) {
-      console.error('Erro ao testar W-API:', error);
+      console.error('Erro ao testar W-API centralizada:', error);
       return false;
     }
   };
