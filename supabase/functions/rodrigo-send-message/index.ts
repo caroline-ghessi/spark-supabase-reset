@@ -51,20 +51,29 @@ serve(async (req) => {
     // Buscar dados do Rodri.GO para logs
     const { data: rodrigo, error: rodrigoError } = await supabase
       .from('sellers')
-      .select('id, name')
+      .select('id, name, whatsapp_number')
       .eq('whatsapp_number', '5194916150')
       .single()
 
     if (rodrigoError || !rodrigo) {
+      console.log(`❌ [${requestId}] Erro ao buscar Rodri.GO:`, rodrigoError)
       throw new Error('Rodri.GO não encontrado na base de dados')
     }
 
-    console.log(`🤖 [${requestId}] Enviando mensagem via Rodri.GO para: ${to_number}`)
+    // Formatar número para padrão internacional (adicionar +55 se necessário)
+    let formattedNumber = to_number.replace(/\D/g, '') // Remove caracteres não numéricos
+    if (!formattedNumber.startsWith('55')) {
+      formattedNumber = '55' + formattedNumber
+    }
+    formattedNumber = '+' + formattedNumber
+    
+    console.log(`🤖 [${requestId}] Enviando mensagem via Rodri.GO para: ${formattedNumber} (original: ${to_number})`)
     console.log(`📋 [${requestId}] Contexto: ${context_type}`)
+    console.log(`🔑 [${requestId}] Token configurado: ${rodrigoWhapiToken ? 'SIM' : 'NÃO'}`)
 
     // Preparar dados para Whapi
     const whapiData: any = {
-      to: to_number,
+      to: formattedNumber,
       body: message
     }
 
@@ -86,27 +95,42 @@ serve(async (req) => {
 
     if (!whapiResponse.ok) {
       const errorText = await whapiResponse.text()
+      console.error(`❌ [${requestId}] Erro na resposta Whapi:`, {
+        status: whapiResponse.status,
+        statusText: whapiResponse.statusText,
+        error: errorText,
+        url: 'https://gate.whapi.cloud/messages/text',
+        data: whapiData
+      })
       throw new Error(`Erro Whapi: ${whapiResponse.status} - ${errorText}`)
     }
 
     const whapiResult = await whapiResponse.json()
-    console.log(`✅ [${requestId}] Mensagem enviada via Rodri.GO:`, whapiResult.id)
+    console.log(`✅ [${requestId}] Mensagem enviada via Rodri.GO:`, whapiResult)
+    
+    if (!whapiResult.id) {
+      console.error(`⚠️ [${requestId}] Resposta Whapi sem message_id:`, whapiResult)
+      throw new Error('Resposta Whapi inválida - sem message_id')
+    }
 
     // Salvar log da comunicação
     const communicationLog = {
       sender_id: rodrigo.id,
       sender_name: 'Rodri.GO',
-      recipient_number: to_number,
+      recipient_number: formattedNumber, // Usar número formatado
       message_content: message,
       message_type: message_type,
       context_type: context_type,
       whapi_message_id: whapiResult.id,
       metadata: {
         ...metadata,
+        original_number: to_number,
+        formatted_number: formattedNumber,
         sent_at: new Date().toISOString(),
-        request_id: requestId
+        request_id: requestId,
+        whapi_response: whapiResult
       },
-      status: 'sent'
+      status: 'delivered'
     }
 
     const { error: logError } = await supabase
