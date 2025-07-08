@@ -46,7 +46,7 @@ serve(async (req) => {
     const verifyToken = Deno.env.get('WEBHOOK_VERIFY_TOKEN');
     const appSecret = Deno.env.get('WHATSAPP_APP_SECRET');
     const difyApiKey = Deno.env.get('DIFY_API_KEY');
-    const difyBaseUrl = Deno.env.get('DIFY_BASE_URL') || 'https://api.dify.ai/v1';
+    const difyBaseUrl = Deno.env.get('DIFY_BASE_URL') || 'https://api.dify.ai';
     const whatsappToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
     const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
 
@@ -536,8 +536,11 @@ async function callDifyAPI(message, conversationId, requestId, credentials) {
     console.log(`   - API Key: ${difyApiKey ? `${difyApiKey.substring(0, 10)}...` : 'AUSENTE'}`);
     console.log(`   - Conversation ID: ${conversationId || 'Nova conversa'}`);
 
-    // Usar a URL correta do Dify
-    const url = `${difyBaseUrl}/chat-messages`;
+    // Construir URL correta do Dify - evitar duplicação de /v1
+    const cleanBaseUrl = difyBaseUrl.replace(/\/v1$/, '');
+    const url = `${cleanBaseUrl}/v1/chat-messages`;
+    
+    console.log(`🤖 [${requestId}] URL Dify construída: ${url}`);
 
     const requestBody = {
       inputs: {},

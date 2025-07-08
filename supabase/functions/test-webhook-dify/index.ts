@@ -59,7 +59,13 @@ serve(async (req) => {
         console.log(`🤖 Testando comunicação com Dify...`)
         
         try {
-          const difyResponse = await fetch(`${difyBaseUrl}/chat-messages`, {
+          // Construir URL correta - evitar duplicação de /v1
+          const cleanBaseUrl = difyBaseUrl.replace(/\/v1$/, '');
+          const difyUrl = `${cleanBaseUrl}/v1/chat-messages`;
+          
+          console.log(`🤖 URL Dify construída: ${difyUrl}`);
+          
+          const difyResponse = await fetch(difyUrl, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${difyApiKey}`,
