@@ -30,7 +30,7 @@ export default function DevTools() {
 
         {/* Content */}
         <div className="flex-1 p-4">
-          <Tabs defaultValue="health" className="h-full flex flex-col">
+          <Tabs defaultValue="health" className="w-full">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 mb-6 flex-shrink-0">
               <TabsTrigger value="health">Health Check</TabsTrigger>
               <TabsTrigger value="whapi">Whapi Debug</TabsTrigger>
@@ -39,24 +39,24 @@ export default function DevTools() {
               <TabsTrigger value="logs">Logs</TabsTrigger>
             </TabsList>
 
-            <div className="flex-1">
-              <TabsContent value="health" className="h-full">
+            <div className="w-full">
+              <TabsContent value="health" className="w-full">
                 <PlatformHealthCheck />
               </TabsContent>
 
-              <TabsContent value="whapi" className="h-full">
+              <TabsContent value="whapi" className="w-full">
                 <WhapiTestPanel />
               </TabsContent>
 
-              <TabsContent value="integration" className="h-full">
+              <TabsContent value="integration" className="w-full">
                 <IntegrationTestPanel />
               </TabsContent>
 
-              <TabsContent value="dify" className="h-full">
+              <TabsContent value="dify" className="w-full">
                 <DifyConnectionTest />
               </TabsContent>
 
-              <TabsContent value="logs" className="h-full">
+              <TabsContent value="logs" className="w-full">
                 <Card className="shadow-sm border-gray-100 h-full flex flex-col">
                   <CardHeader className="flex-shrink-0">
                     <CardTitle>Logs do Sistema</CardTitle>
