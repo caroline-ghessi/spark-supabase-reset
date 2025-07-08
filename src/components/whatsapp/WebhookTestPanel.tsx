@@ -36,12 +36,44 @@ interface ReprocessResult {
   };
 }
 
+interface HealthCheckResult {
+  status: string;
+  timestamp: string;
+  checks: {
+    webhook: {
+      status: string;
+      responseTime: number;
+      url: string;
+    };
+    dify: {
+      status: string;
+      responseTime: number;
+      configured: boolean;
+    };
+    conversations: {
+      problemCount: number;
+      withoutBotResponse: number;
+      conversations: Array<{
+        id: string;
+        client_name: string;
+        client_phone: string;
+        created_at: string;
+        status: string;
+      }>;
+    };
+  };
+  issues: string[];
+  recommendations: string[];
+}
+
 export const WebhookTestPanel: React.FC = () => {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [reprocessResult, setReprocessResult] = useState<ReprocessResult | null>(null);
+  const [healthChecking, setHealthChecking] = useState(false);
+  const [healthResult, setHealthResult] = useState<HealthCheckResult | null>(null);
 
   const runWebhookTest = async () => {
     setTesting(true);
@@ -108,6 +140,40 @@ export const WebhookTestPanel: React.FC = () => {
     }
   };
 
+  const runHealthCheck = async () => {
+    setHealthChecking(true);
+    setError(null);
+    
+    try {
+      console.log('🏥 Iniciando health check completo...');
+      
+      const { data, error: funcError } = await supabase.functions.invoke('webhook-health-check');
+
+      if (funcError) {
+        throw new Error(`Erro na função: ${funcError.message}`);
+      }
+
+      setHealthResult(data);
+      
+      if (data.status === 'healthy') {
+        toast.success('Sistema funcionando normalmente!');
+      } else if (data.status === 'warning') {
+        toast.warning('Sistema com problemas menores detectados');
+      } else if (data.status === 'degraded') {
+        toast.error('Sistema com problemas significativos');
+      } else {
+        toast.error('Sistema com problemas críticos!');
+      }
+      
+    } catch (err) {
+      console.error('❌ Erro no health check:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      toast.error('Erro ao executar health check');
+    } finally {
+      setHealthChecking(false);
+    }
+  };
+
   const getStatusIcon = (status: boolean) => {
     return status ? (
       <CheckCircle className="w-4 h-4 text-green-600" />
@@ -127,17 +193,27 @@ export const WebhookTestPanel: React.FC = () => {
       <CardContent className="space-y-4">
         <div className="flex flex-col space-y-2">
           <Button 
+            onClick={runHealthCheck} 
+            disabled={testing || reprocessing || healthChecking}
+            className="flex items-center space-x-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${healthChecking ? 'animate-spin' : ''}`} />
+            <span>{healthChecking ? 'Verificando Saúde...' : 'Health Check Completo'}</span>
+          </Button>
+          
+          <Button 
             onClick={runWebhookTest} 
-            disabled={testing || reprocessing}
+            disabled={testing || reprocessing || healthChecking}
+            variant="outline"
             className="flex items-center space-x-2"
           >
             <RefreshCw className={`w-4 h-4 ${testing ? 'animate-spin' : ''}`} />
-            <span>{testing ? 'Testando...' : 'Testar Webhook'}</span>
+            <span>{testing ? 'Testando...' : 'Testar Conectividade'}</span>
           </Button>
           
           <Button 
             onClick={reprocessLostMessages} 
-            disabled={testing || reprocessing}
+            disabled={testing || reprocessing || healthChecking}
             variant="outline"
             className="flex items-center space-x-2"
           >
@@ -211,6 +287,95 @@ export const WebhookTestPanel: React.FC = () => {
 
             <div className="text-xs text-gray-500">
               Teste executado em: {new Date(result.timestamp).toLocaleString('pt-BR')}
+            </div>
+          </div>
+        )}
+
+        {healthResult && (
+          <div className={`p-4 rounded-lg ${
+            healthResult.status === 'healthy' ? 'bg-green-50' :
+            healthResult.status === 'warning' ? 'bg-yellow-50' :
+            healthResult.status === 'degraded' ? 'bg-orange-50' :
+            'bg-red-50'
+          }`}>
+            <h4 className="font-semibold mb-2 flex items-center space-x-2">
+              {healthResult.status === 'healthy' && <CheckCircle className="w-4 h-4 text-green-600" />}
+              {healthResult.status === 'warning' && <AlertTriangle className="w-4 h-4 text-yellow-600" />}
+              {healthResult.status === 'degraded' && <AlertTriangle className="w-4 h-4 text-orange-600" />}
+              {healthResult.status === 'critical' && <XCircle className="w-4 h-4 text-red-600" />}
+              <span>Status do Sistema: {healthResult.status}</span>
+            </h4>
+            
+            <div className="space-y-3">
+              {/* Webhook Status */}
+              <div className="bg-white p-3 rounded border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium">Webhook Principal</span>
+                  <Badge variant={healthResult.checks.webhook.status === 'working' ? 'default' : 'destructive'}>
+                    {healthResult.checks.webhook.status}
+                  </Badge>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <div>URL: {healthResult.checks.webhook.url}</div>
+                  <div>Tempo de resposta: {healthResult.checks.webhook.responseTime}ms</div>
+                </div>
+              </div>
+
+              {/* Dify Status */}
+              <div className="bg-white p-3 rounded border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium">Dify AI</span>
+                  <Badge variant={healthResult.checks.dify.status === 'working' ? 'default' : 'destructive'}>
+                    {healthResult.checks.dify.status}
+                  </Badge>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <div>Configurado: {healthResult.checks.dify.configured ? 'Sim' : 'Não'}</div>
+                  {healthResult.checks.dify.responseTime > 0 && (
+                    <div>Tempo de resposta: {healthResult.checks.dify.responseTime}ms</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Conversations Status */}
+              <div className="bg-white p-3 rounded border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium">Conversas</span>
+                  <Badge variant={healthResult.checks.conversations.problemCount === 0 ? 'default' : 'destructive'}>
+                    {healthResult.checks.conversations.problemCount} problemas
+                  </Badge>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <div>Sem resposta do bot: {healthResult.checks.conversations.withoutBotResponse}</div>
+                  <div>Total problemáticas: {healthResult.checks.conversations.problemCount}</div>
+                </div>
+              </div>
+
+              {/* Issues */}
+              {healthResult.issues.length > 0 && (
+                <div className="bg-white p-3 rounded border">
+                  <h5 className="font-medium mb-2">Problemas Detectados:</h5>
+                  <ul className="text-sm text-red-600 space-y-1">
+                    {healthResult.issues.map((issue, index) => (
+                      <li key={index}>• {issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Recommendations */}
+              <div className="bg-white p-3 rounded border">
+                <h5 className="font-medium mb-2">Recomendações:</h5>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  {healthResult.recommendations.map((rec, index) => (
+                    <li key={index}>• {rec}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-500 mt-3">
+              Health check executado em: {new Date(healthResult.timestamp).toLocaleString('pt-BR')}
             </div>
           </div>
         )}
