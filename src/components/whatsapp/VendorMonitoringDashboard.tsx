@@ -8,6 +8,7 @@ import { useVendorConversations } from '@/hooks/useVendorConversations';
 import { useVendorMessages, VendorMessage as ImportedVendorMessage } from '@/hooks/useVendorMessages';
 import { VendorConversationsList } from './VendorConversationsList';
 import { VendorChatInterface } from './VendorChatInterface';
+import { supabase } from '@/integrations/supabase/client';
 
 // Usar o tipo do useVendorConversations que é compatível com a view
 type VendorConversation = {
@@ -63,6 +64,24 @@ export const VendorMonitoringDashboard: React.FC = () => {
     setSelectedConversation(conversation);
   };
 
+  // Função para sincronizar mensagens
+  const handleSyncMessages = async () => {
+    try {
+      console.log('🔄 Iniciando sincronização de mensagens...');
+      const { data, error } = await supabase.functions.invoke('sync-messages', {
+        body: { action: 'sync_missing', limit: 1000 }
+      });
+      
+      if (error) throw error;
+      
+      console.log('✅ Sincronização concluída:', data);
+      // Recarregar conversas após sincronização
+      handleRefresh();
+    } catch (error) {
+      console.error('❌ Erro na sincronização:', error);
+    }
+  };
+
   // Stats calculadas
   const stats = {
     totalConversations: conversations.length,
@@ -89,10 +108,16 @@ export const VendorMonitoringDashboard: React.FC = () => {
               </p>
             </div>
           </div>
-          <Button onClick={handleRefresh} variant="outline" size="sm">
-            <RefreshCw className={`w-4 h-4 mr-2 ${conversationsLoading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
+          <div className="flex space-x-2">
+            <Button onClick={handleSyncMessages} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Sincronizar Mensagens
+            </Button>
+            <Button onClick={handleRefresh} variant="outline" size="sm">
+              <RefreshCw className={`w-4 h-4 mr-2 ${conversationsLoading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          </div>
         </div>
       </div>
 
