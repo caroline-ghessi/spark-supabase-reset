@@ -1357,6 +1357,16 @@ export type Database = {
           errors_count: number
         }[]
       }
+      sync_retroactive_messages_debug: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_processed: number
+          successfully_synced: number
+          already_existed: number
+          errors_count: number
+          sample_errors: string[]
+        }[]
+      }
       test_conversations_without_messages: {
         Args: Record<PropertyKey, never>
         Returns: {
