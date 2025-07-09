@@ -498,58 +498,12 @@ async function processMessages(supabase, messageData, requestId, credentials) {
             }
 
           } else if (difyResponse && difyResponse.fallback) {
-            // FALLBACK QUANDO DIFY FALHA
-            console.error(`❌ [${requestId}] === DIFY FALHOU - ATIVANDO FALLBACK ===`);
+            // 🚨 DIFY FALHOU - MARCAR PARA MANUAL SEM FALLBACK
+            console.error(`❌ [${requestId}] === DIFY FALHOU - MARCANDO PARA MANUAL ===`);
             console.error(`❌ [${requestId}] Erro Dify:`, difyResponse.error);
             console.error(`❌ [${requestId}] Mensagem:`, difyResponse.message);
             
-            const fallbackMessage = "Olá! Nosso sistema está passando por uma atualização. Em breve um de nossos atendentes irá te ajudar. Obrigado pela paciência! 🙂";
-            
-            // Salvar mensagem de fallback
-            const fallbackMessageData = {
-              conversation_id: conversation.id,
-              sender_type: 'bot',
-              sender_name: 'Sistema de Fallback',
-              content: fallbackMessage,
-              message_type: 'text',
-              status: 'sent',
-              metadata: { 
-                source: 'fallback',
-                dify_error: difyResponse.error,
-                original_dify_response: difyResponse
-              }
-            };
-
-            const { data: fallbackMsg, error: fallbackError } = await supabase
-              .from('messages')
-              .insert(fallbackMessageData)
-              .select()
-              .single();
-
-            if (!fallbackError) {
-              console.log(`✅ [${requestId}] Mensagem de fallback salva`);
-              
-              // Enviar fallback via WhatsApp
-              const fallbackResult = await sendWhatsAppMessage(
-                clientPhone, 
-                fallbackMessage, 
-                requestId, 
-                credentials
-              );
-              
-              if (fallbackResult.success) {
-                console.log(`✅ [${requestId}] Fallback enviado com sucesso`);
-                await supabase
-                  .from('messages')
-                  .update({
-                    status: 'sent',
-                    whatsapp_message_id: fallbackResult.message_id
-                  })
-                  .eq('id', fallbackMsg.id);
-              }
-            }
-            
-            // Marcar conversa para revisão manual
+            // Marcar conversa para revisão manual IMEDIATAMENTE
             await supabase
               .from('conversations')
               .update({
@@ -561,39 +515,111 @@ async function processMessages(supabase, messageData, requestId, credentials) {
                   ...conversation.metadata,
                   dify_failed: true,
                   dify_error: difyResponse.error,
-                  requires_manual_review: true
+                  requires_manual_review: true,
+                  auto_escalated: true
                 }
               })
               .eq('id', conversation.id);
               
-            console.log(`🚨 [${requestId}] Conversa marcada para atendimento manual devido a falha do Dify`);
+            console.log(`🚨 [${requestId}] Conversa AUTO-ESCALADA para manual - Dify falhou`);
+
+            // Criar notificação de alta prioridade para operador
+            await supabase
+              .from('notifications')
+              .insert({
+                type: 'dify_failure',
+                title: '🚨 URGENTE: Bot Falhou',
+                message: `Dify falhou para ${clientName}. Mensagem: "${messageContent.substring(0, 80)}..." - INTERVENÇÃO MANUAL NECESSÁRIA`,
+                priority: 'high',
+                context: {
+                  conversation_id: conversation.id,
+                  client_phone: clientPhone,
+                  client_name: clientName,
+                  dify_error: difyResponse.error,
+                  requires_immediate_attention: true,
+                  auto_escalated: true
+                }
+              });
+            
+            console.log(`📢 [${requestId}] Notificação URGENTE criada - BOT FALHOU, operador deve responder`);
 
           } else {
             console.error(`❌ [${requestId}] === RESPOSTA DIFY TOTALMENTE INVÁLIDA ===`);
             console.error(`❌ [${requestId}] Resposta recebida:`, difyResponse);
             
-            // Fallback para resposta totalmente inválida
-            const emergencyMessage = "Olá! Estamos com uma instabilidade temporária. Por favor, aguarde que em breve retornaremos o contato. Obrigado!";
-            
-            await sendWhatsAppMessage(
-              clientPhone, 
-              emergencyMessage, 
-              requestId, 
-              credentials
-            );
+            // Marcar para manual sem enviar fallback
+            await supabase
+              .from('conversations')
+              .update({
+                status: 'manual',
+                priority: 'high',
+                updated_at: new Date().toISOString(),
+                metadata: {
+                  ...conversation.metadata,
+                  dify_invalid_response: true,
+                  requires_manual_review: true
+                }
+              })
+              .eq('id', conversation.id);
+              
+            console.log(`🚨 [${requestId}] Conversa marcada para manual - resposta Dify inválida`);
+
+            // Notificar operador sobre resposta inválida
+            await supabase
+              .from('notifications')
+              .insert({
+                type: 'dify_invalid',
+                title: '⚠️ Resposta Dify Inválida',
+                message: `Bot retornou resposta inválida para ${clientName}. Atendimento manual necessário.`,
+                priority: 'high',
+                context: {
+                  conversation_id: conversation.id,
+                  client_phone: clientPhone,
+                  client_name: clientName,
+                  invalid_response: difyResponse
+                }
+              });
           }
         } catch (difyError) {
-          console.error(`❌ [${requestId}] Erro ao chamar Dify:`, difyError);
+          console.error(`❌ [${requestId}] Erro CRÍTICO ao chamar Dify:`, difyError);
           
-          // Enviar mensagem de fallback
-          const fallbackMessage = "Desculpe, estou com dificuldades técnicas no momento. Por favor, aguarde que em breve um de nossos atendentes irá te ajudar.";
+          // Marcar conversa para manual sem enviar fallback
+          await supabase
+            .from('conversations')
+            .update({
+              status: 'manual',
+              priority: 'high',
+              updated_at: new Date().toISOString(),
+              metadata: {
+                ...conversation.metadata,
+                dify_critical_error: true,
+                dify_error_message: difyError.message,
+                requires_immediate_attention: true
+              }
+            })
+            .eq('id', conversation.id);
+            
+          console.log(`🚨 [${requestId}] Conversa AUTO-ESCALADA para manual - Erro crítico no Dify`);
+
+          // Criar notificação de erro crítico para operador
+          await supabase
+            .from('notifications')
+            .insert({
+              type: 'dify_critical_error',
+              title: '🚨 CRÍTICO: Erro Dify',
+              message: `Erro crítico no Dify para ${clientName}: ${difyError.message} - ATENÇÃO IMEDIATA NECESSÁRIA`,
+              priority: 'high',
+              context: {
+                conversation_id: conversation.id,
+                client_phone: clientPhone,
+                client_name: clientName,
+                error_message: difyError.message,
+                error_type: 'dify_critical',
+                requires_immediate_attention: true
+              }
+            });
           
-          await sendWhatsAppMessage(
-            clientPhone, 
-            fallbackMessage, 
-            requestId, 
-            credentials
-          );
+          console.log(`📢 [${requestId}] Notificação CRÍTICA criada - Dify com erro grave`);
         }
 
         // 9. Criar notificação de nova mensagem
