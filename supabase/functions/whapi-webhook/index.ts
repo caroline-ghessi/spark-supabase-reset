@@ -355,15 +355,20 @@ async function processWhapiMessage(requestId: string, message: any, sellerParam?
       }
     }
 
-    // Atualizar conversa com informações mais detalhadas
-    await supabase
-      .from('conversations')
-      .update({
-        last_message_at: messageData.sent_at,
-        updated_at: new Date().toISOString(),
-        status: message.from_me ? 'manual' : 'manual' // Manter como manual para conversas whapi
-      })
-      .eq('id', conversationId)
+      // Atualizar conversa com informações mais detalhadas 
+      await supabase
+        .from('conversations')
+        .update({
+          last_message_at: messageData.sent_at,
+          updated_at: new Date().toISOString(),
+          status: 'manual', // Whapi sempre manual (vendedores ativos)
+          metadata: {
+            source: 'whapi',
+            seller_active: true,
+            last_whapi_sync: new Date().toISOString()
+          }
+        })
+        .eq('id', conversationId)
 
     // Criar notificação se for mensagem do cliente
     if (!message.from_me) {

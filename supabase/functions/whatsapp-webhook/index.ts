@@ -414,34 +414,31 @@ async function processMessages(supabase, messageData, requestId, credentials) {
               console.log(`✅ [${requestId}] Mensagem do bot salva com ID:`, botMessage.id);
             }
 
-            // 7. Atualizar conversa com dify_conversation_id CRÍTICO
-            if (difyResponse.conversation_id) {
-              console.log(`🔄 [${requestId}] Atualizando conversa com dify_conversation_id: ${difyResponse.conversation_id}`);
-              
-              const { error: updateConvError } = await supabase
-                .from('conversations')
-                .update({
-                  dify_conversation_id: difyResponse.conversation_id,
-                  updated_at: new Date().toISOString(),
-                  last_message_at: new Date().toISOString()
-                })
-                .eq('id', conversation.id);
+            // 7. CORREÇÃO RACE CONDITION: Atualizar conversa com dify_conversation_id
+            const updateData = {
+              updated_at: new Date().toISOString(),
+              last_message_at: new Date().toISOString()
+            };
 
-              if (updateConvError) {
-                console.error(`❌ [${requestId}] CRÍTICO: Erro ao atualizar dify_conversation_id:`, updateConvError);
-              } else {
-                console.log(`✅ [${requestId}] SUCESSO: Conversa atualizada com dify_conversation_id`);
-              }
+            // Só atualizar dify_conversation_id se não existir (evitar sobrescrever)
+            if (difyResponse.conversation_id && !conversation.dify_conversation_id) {
+              updateData.dify_conversation_id = difyResponse.conversation_id;
+              console.log(`🔄 [${requestId}] Atualizando com novo dify_conversation_id: ${difyResponse.conversation_id}`);
+            } else if (difyResponse.conversation_id && conversation.dify_conversation_id) {
+              console.log(`ℹ️ [${requestId}] Conversa já tem dify_conversation_id: ${conversation.dify_conversation_id}`);
             } else {
-              console.warn(`⚠️ [${requestId}] ATENÇÃO: Dify não retornou conversation_id`);
-              // Apenas atualizar timestamps
-              await supabase
-                .from('conversations')
-                .update({
-                  updated_at: new Date().toISOString(),
-                  last_message_at: new Date().toISOString()
-                })
-                .eq('id', conversation.id);
+              console.warn(`⚠️ [${requestId}] Dify não retornou conversation_id`);
+            }
+
+            const { error: updateConvError } = await supabase
+              .from('conversations')
+              .update(updateData)
+              .eq('id', conversation.id);
+
+            if (updateConvError) {
+              console.error(`❌ [${requestId}] Erro ao atualizar conversa:`, updateConvError);
+            } else {
+              console.log(`✅ [${requestId}] Conversa atualizada com sucesso`);
             }
 
             // 8. Enviar resposta via WhatsApp
@@ -615,35 +612,33 @@ async function processMessages(supabase, messageData, requestId, credentials) {
 }
 
 async function callDifyAPI(message, conversationId, requestId, credentials) {
-  console.log(`🤖 [${requestId}] === INICIANDO CHAMADA DIFY ===`);
+  const correlationId = `${requestId}-${Date.now()}`;
+  console.log(`🤖 [${correlationId}] === DIFY API CALL OTIMIZADA ===`);
   
   try {
     const { difyApiKey, difyBaseUrl } = credentials;
 
-    // VALIDAÇÃO CRÍTICA DE CREDENCIAIS
+    // 1. VALIDAÇÃO DE CREDENCIAIS
     if (!difyApiKey) {
-      console.error(`❌ [${requestId}] CRÍTICO: Dify API Key não configurada`);
+      console.error(`❌ [${correlationId}] DIFY_API_KEY não configurada`);
       return { error: 'API_KEY_MISSING', fallback: true };
     }
 
     if (!difyBaseUrl) {
-      console.error(`❌ [${requestId}] CRÍTICO: Dify Base URL não configurada`);
+      console.error(`❌ [${correlationId}] DIFY_BASE_URL não configurada`);
       return { error: 'BASE_URL_MISSING', fallback: true };
     }
 
-    console.log(`🔍 [${requestId}] Configurações Dify válidas:`);
-    console.log(`   - Base URL: ${difyBaseUrl}`);
-    console.log(`   - API Key: ${difyApiKey.substring(0, 20)}...${difyApiKey.substring(difyApiKey.length - 4)}`);
-    console.log(`   - Conversation ID: ${conversationId || 'NOVA CONVERSA'}`);
-    console.log(`   - Message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`);
-
-    // CONSTRUÇÃO CUIDADOSA DA URL
-    const cleanBaseUrl = difyBaseUrl.replace(/\/v1$/, '').replace(/\/$/, '');
-    const url = `${cleanBaseUrl}/v1/chat-messages`;
+    // 2. CONSTRUÇÃO DE URL PADRONIZADA (igual ao teste)
+    const baseUrl = difyBaseUrl.replace(/\/$/, ''); // Remove trailing slash
+    const url = `${baseUrl}/v1/chat-messages`;
     
-    console.log(`🔗 [${requestId}] URL final construída: ${url}`);
+    console.log(`🔗 [${correlationId}] URL construída: ${url}`);
+    console.log(`🔑 [${correlationId}] API Key: ${difyApiKey.substring(0, 8)}...`);
+    console.log(`💬 [${correlationId}] Conversation ID: ${conversationId || 'NOVA'}`);
+    console.log(`📝 [${correlationId}] Mensagem: "${message.substring(0, 100)}..."`);
 
-    // PREPARAÇÃO DO BODY
+    // 3. PREPARAR DADOS
     const requestBody = {
       inputs: {},
       query: message,
@@ -651,124 +646,109 @@ async function callDifyAPI(message, conversationId, requestId, credentials) {
       user: `whatsapp-${requestId}`
     };
 
-    if (conversationId) {
+    // Só adicionar conversation_id se existir e for válido
+    if (conversationId && conversationId.trim() !== '') {
       requestBody.conversation_id = conversationId;
-      console.log(`🔄 [${requestId}] Usando conversation_id existente: ${conversationId}`);
+      console.log(`🔄 [${correlationId}] Usando conversation_id: ${conversationId}`);
     } else {
-      console.log(`🆕 [${requestId}] Nova conversa será criada no Dify`);
+      console.log(`🆕 [${correlationId}] Nova conversa será criada`);
     }
 
-    console.log(`📤 [${requestId}] Request Body:`, JSON.stringify(requestBody, null, 2));
+    console.log(`📤 [${correlationId}] Payload:`, JSON.stringify(requestBody, null, 2));
 
-    // TIMEOUT PARA EVITAR TRAVAMENTO
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-
-    try {
-      console.log(`⏳ [${requestId}] Enviando requisição para Dify (timeout: 30s)...`);
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${difyApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log(`📨 [${requestId}] Status da resposta: ${response.status} ${response.statusText}`);
-      console.log(`📨 [${requestId}] Headers da resposta:`, Object.fromEntries(response.headers.entries()));
-
-      const responseText = await response.text();
-      console.log(`📝 [${requestId}] Resposta bruta (${responseText.length} chars):`, responseText.substring(0, 1000));
-
-      // VALIDAÇÃO DO STATUS HTTP
-      if (!response.ok) {
-        console.error(`❌ [${requestId}] ERRO HTTP ${response.status}: ${response.statusText}`);
-        console.error(`❌ [${requestId}] Resposta de erro completa:`, responseText);
+    // 4. IMPLEMENTAR RETRY COM TIMEOUT OTIMIZADO
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.log(`🔄 [${correlationId}] Tentativa ${attempt}/2`);
         
-        if (response.status === 401) {
-          return { error: 'UNAUTHORIZED', message: 'API Key inválida', fallback: true };
-        } else if (response.status === 404) {
-          return { error: 'NOT_FOUND', message: 'Endpoint não encontrado', fallback: true };
-        } else if (response.status >= 500) {
-          return { error: 'SERVER_ERROR', message: 'Erro interno do Dify', fallback: true };
-        } else {
-          return { error: 'HTTP_ERROR', message: `Erro ${response.status}`, fallback: true };
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.warn(`⏰ [${correlationId}] Timeout 15s - cancelando tentativa ${attempt}`);
+          controller.abort();
+        }, 15000); // Timeout reduzido para 15s
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${difyApiKey}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'WhatsApp-Webhook/1.0'
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        console.log(`📥 [${correlationId}] Status: ${response.status} - Tentativa ${attempt}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ [${correlationId}] Tentativa ${attempt} falhou:`, {
+            status: response.status,
+            url: url,
+            error: errorText
+          });
+          
+          // Se for 404 (NOT_FOUND), não tentar novamente
+          if (response.status === 404) {
+            console.error(`❌ [${correlationId}] 404 NOT_FOUND - URL possivelmente incorreta`);
+            return { error: 'NOT_FOUND', message: 'URL incorreta', fallback: true };
+          }
+          
+          const error = new Error(`Dify API Error: ${response.status} - ${errorText}`);
+          error.status = response.status;
+          throw error;
+        }
+
+        // 5. PROCESSAR RESPOSTA DE SUCESSO
+        const responseText = await response.text();
+        console.log(`📄 [${correlationId}] Resposta raw (${responseText.length} chars):`, responseText.substring(0, 500) + '...');
+        
+        let responseData;
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error(`❌ [${correlationId}] Erro no parse JSON:`, parseError);
+          return { error: 'JSON_PARSE_ERROR', message: parseError.message, fallback: true };
+        }
+        
+        if (!responseData.answer) {
+          console.error(`❌ [${correlationId}] Resposta sem 'answer' field`);
+          return { error: 'NO_ANSWER', message: 'Resposta sem conteúdo', fallback: true };
+        }
+
+        console.log(`✅ [${correlationId}] === DIFY SUCCESS ===`);
+        console.log(`🎉 [${correlationId}] Answer: "${responseData.answer.substring(0, 100)}..."`);
+        console.log(`🔗 [${correlationId}] Conv ID: ${responseData.conversation_id || 'NONE'}`);
+        
+        return responseData;
+
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ [${correlationId}] Tentativa ${attempt} erro:`, error.message);
+        
+        if (error.name === 'AbortError') {
+          console.error(`❌ [${correlationId}] Timeout na tentativa ${attempt}`);
+        }
+        
+        // Backoff exponencial apenas para tentativas múltiplas
+        if (attempt < 2) {
+          const delay = 1000 * attempt; // 1s, 2s
+          console.log(`⏳ [${correlationId}] Aguardando ${delay}ms antes da próxima tentativa`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
-
-      // VALIDAÇÃO DO CONTEÚDO
-      if (!responseText || responseText.trim() === '') {
-        console.error(`❌ [${requestId}] Resposta vazia do Dify`);
-        return { error: 'EMPTY_RESPONSE', fallback: true };
-      }
-
-      // VERIFICAR SE É HTML (erro de roteamento)
-      if (responseText.trim().startsWith('<!doctype') || responseText.trim().startsWith('<html')) {
-        console.error(`❌ [${requestId}] Dify retornou HTML - possível erro de URL`);
-        console.error(`❌ [${requestId}] URL usada: ${url}`);
-        return { error: 'HTML_RESPONSE', message: 'URL incorreta', fallback: true };
-      }
-
-      // PARSE JSON
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-        console.log(`✅ [${requestId}] JSON parseado com sucesso`);
-      } catch (parseError) {
-        console.error(`❌ [${requestId}] Erro ao fazer parse JSON:`, parseError);
-        console.error(`❌ [${requestId}] Texto que falhou no parse:`, responseText.substring(0, 500));
-        return { error: 'JSON_PARSE_ERROR', message: parseError.message, fallback: true };
-      }
-
-      // VALIDAÇÃO DA ESTRUTURA DA RESPOSTA
-      console.log(`🔍 [${requestId}] Estrutura da resposta:`, {
-        keys: Object.keys(responseData),
-        hasAnswer: !!responseData.answer,
-        hasConversationId: !!responseData.conversation_id,
-        answerLength: responseData.answer?.length || 0
-      });
-
-      if (!responseData.answer) {
-        console.error(`❌ [${requestId}] Resposta sem campo 'answer':`);
-        console.error(`❌ [${requestId}] Campos disponíveis:`, Object.keys(responseData));
-        console.error(`❌ [${requestId}] Resposta completa:`, JSON.stringify(responseData, null, 2));
-        return { error: 'NO_ANSWER', message: 'Resposta sem conteúdo', fallback: true };
-      }
-
-      console.log(`🎉 [${requestId}] === DIFY SUCESSO ===`);
-      console.log(`✅ [${requestId}] Answer: "${responseData.answer.substring(0, 200)}${responseData.answer.length > 200 ? '...' : ''}"`);
-      console.log(`✅ [${requestId}] Conversation ID: ${responseData.conversation_id || 'NÃO FORNECIDO'}`);
-      
-      return responseData;
-
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      
-      if (fetchError.name === 'AbortError') {
-        console.error(`❌ [${requestId}] TIMEOUT na requisição Dify (30s)`);
-        return { error: 'TIMEOUT', message: 'Requisição muito lenta', fallback: true };
-      }
-      
-      throw fetchError; // Re-throw para o catch externo
     }
 
+    console.error(`❌ [${correlationId}] Todas as tentativas falharam - último erro:`, lastError?.message);
+    return { error: 'ALL_ATTEMPTS_FAILED', message: lastError?.message, fallback: true };
+
   } catch (error) {
-    console.error(`❌ [${requestId}] === ERRO CRÍTICO NO DIFY ===`);
-    console.error(`❌ [${requestId}] Tipo: ${error.name}`);
-    console.error(`❌ [${requestId}] Mensagem: ${error.message}`);
-    console.error(`❌ [${requestId}] Stack trace:`, error.stack);
-    
-    return { 
-      error: 'CRITICAL_ERROR', 
-      message: error.message, 
-      stack: error.stack,
-      fallback: true 
-    };
+    console.error(`❌ [${correlationId}] Erro crítico:`, error);
+    return { error: 'CRITICAL_ERROR', message: error.message, fallback: true };
   }
 }
 
