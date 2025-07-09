@@ -365,7 +365,32 @@ async function processMessages(supabase, messageData, requestId, credentials) {
 
         console.log(`✅ [${requestId}] Mensagem do cliente salva com ID:`, savedMessage.id);
 
-        // 4. Verificar se devemos chamar Dify
+        // 4. 🚨 VERIFICAÇÃO CRÍTICA: Se conversa está em modo manual, não processar bot
+        if (conversation.status === 'manual' || conversation.status === 'seller') {
+          console.log(`🔒 [${requestId}] CONVERSA EM MODO ${conversation.status.toUpperCase()} - BOT BLOQUEADO`);
+          
+          // Criar notificação para operador
+          await supabase
+            .from('notifications')
+            .insert({
+              type: 'new_message',
+              title: 'Nova Mensagem - Modo Manual',
+              message: `${clientName}: ${messageContent.substring(0, 100)}${messageContent.length > 100 ? '...' : ''}`,
+              priority: 'normal',
+              context: {
+                conversation_id: conversation.id,
+                client_phone: clientPhone,
+                message_id: savedMessage.id,
+                bot_blocked: true,
+                reason: `conversation_status_${conversation.status}`
+              }
+            });
+          
+          console.log(`📢 [${requestId}] Notificação criada para operador - bot não respondeu por estar em modo ${conversation.status}`);
+          continue; // Pular para próxima mensagem sem processar bot
+        }
+
+        // 5. Verificar se devemos chamar Dify
         if (!credentials.difyApiKey) {
           console.log(`⚠️ [${requestId}] Dify API Key não configurada - apenas salvando mensagem`);
           continue;
