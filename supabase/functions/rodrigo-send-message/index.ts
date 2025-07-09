@@ -83,24 +83,50 @@ serve(async (req) => {
 
     console.log(`📊 [${requestId}] Dados Whapi:`, JSON.stringify(whapiData, null, 2))
 
-    // Enviar via Whapi com timeout de 10 segundos
+    // Enviar via Whapi com timeout aumentado para 30 segundos
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000)
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    
+    console.log(`🚀 [${requestId}] Iniciando envio para API Whapi...`)
+    console.log(`🔗 [${requestId}] URL: https://gate.whapi.cloud/messages/text`)
+    console.log(`⏱️ [${requestId}] Timeout configurado: 30 segundos`)
     
     let whapiResponse
+    const requestStartTime = Date.now()
+    
     try {
-      whapiResponse = await fetch(`https://gate.whapi.cloud/messages/text?token=${rodrigoWhapiToken}`, {
+      console.log(`📡 [${requestId}] Fazendo requisição para Whapi...`)
+      console.log(`📋 [${requestId}] Headers: Authorization: Bearer ${rodrigoWhapiToken ? '***CONFIGURADO***' : 'NÃO CONFIGURADO'}`)
+      console.log(`📋 [${requestId}] Body: ${JSON.stringify(whapiData)}`)
+      
+      whapiResponse = await fetch('https://gate.whapi.cloud/messages/text', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer https://gate.whapi.cloud/',
+          'Authorization': `Bearer ${rodrigoWhapiToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(whapiData),
         signal: controller.signal
       })
+      
+      const requestDuration = Date.now() - requestStartTime
+      console.log(`⏱️ [${requestId}] Tempo de resposta: ${requestDuration}ms`)
+      console.log(`📶 [${requestId}] Status da resposta: ${whapiResponse.status} ${whapiResponse.statusText}`)
+      
     } catch (fetchError) {
       clearTimeout(timeoutId)
-      console.error(`❌ [${requestId}] Erro de rede/timeout Whapi:`, fetchError)
+      const requestDuration = Date.now() - requestStartTime
+      console.error(`❌ [${requestId}] Erro de rede/timeout após ${requestDuration}ms:`, {
+        error: fetchError.message,
+        name: fetchError.name,
+        cause: fetchError.cause,
+        stack: fetchError.stack?.substring(0, 200)
+      })
+      
+      if (fetchError.name === 'AbortError') {
+        throw new Error(`Timeout de 30 segundos excedido ao enviar mensagem via Whapi`)
+      }
+      
       throw new Error(`Falha de conectividade Whapi: ${fetchError.message}`)
     }
     
