@@ -41,9 +41,11 @@ serve(async (req) => {
 
     console.log(`📤 [${requestId}] Enviando mensagem via Whapi para: ${to_number}`)
 
-    // Preparar dados para Whapi
+    // Preparar dados para Whapi (limpar número)
+    const cleanNumber = to_number.replace(/^\+/, '').replace(/\D/g, '')
+    
     const whapiData: any = {
-      to: to_number,
+      to: cleanNumber,
       body: message
     }
 
@@ -53,11 +55,13 @@ serve(async (req) => {
       delete whapiData.body
     }
 
-    // Enviar via Whapi
-    const whapiResponse = await fetch('https://gate.whapi.cloud/messages/text', {
+    console.log(`📤 [${requestId}] Enviando para número: ${cleanNumber}`)
+
+    // Enviar via Whapi com token na URL
+    const whapiResponse = await fetch(`https://gate.whapi.cloud/messages/text?token=${seller.whapi_token}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${seller.whapi_token}`,
+        'Authorization': 'Bearer https://gate.whapi.cloud/',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(whapiData)

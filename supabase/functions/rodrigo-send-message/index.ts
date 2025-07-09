@@ -61,21 +61,17 @@ serve(async (req) => {
       throw new Error('Rodri.GO não encontrado na base de dados com número 5551981155622')
     }
 
-    // Formatar número para padrão internacional (adicionar +55 se necessário)
-    let formattedNumber = to_number.replace(/\D/g, '') // Remove caracteres não numéricos
-    if (!formattedNumber.startsWith('55')) {
-      formattedNumber = '55' + formattedNumber
-    }
-    formattedNumber = '+' + formattedNumber
+    // Formatar número (remover + se presente, manter apenas dígitos)
+    const cleanNumber = to_number.replace(/^\+/, '').replace(/\D/g, '')
     
-    console.log(`🤖 [${requestId}] Enviando mensagem via Rodri.GO para: ${formattedNumber} (original: ${to_number})`)
+    console.log(`🤖 [${requestId}] Enviando mensagem via Rodri.GO para: ${cleanNumber} (original: ${to_number})`)
     console.log(`📋 [${requestId}] Contexto: ${context_type}`)
     console.log(`🔑 [${requestId}] Token configurado: ${rodrigoWhapiToken ? 'SIM' : 'NÃO'}`)
     console.log(`📞 [${requestId}] Número Rodri.GO: ${rodrigo.whatsapp_number}`)
 
     // Preparar dados para Whapi
     const whapiData: any = {
-      to: formattedNumber,
+      to: cleanNumber,
       body: message
     }
 
@@ -93,10 +89,10 @@ serve(async (req) => {
     
     let whapiResponse
     try {
-      whapiResponse = await fetch('https://gate.whapi.cloud/messages/text', {
+      whapiResponse = await fetch(`https://gate.whapi.cloud/messages/text?token=${rodrigoWhapiToken}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${rodrigoWhapiToken}`,
+          'Authorization': 'Bearer https://gate.whapi.cloud/',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(whapiData),
@@ -183,7 +179,7 @@ serve(async (req) => {
     const communicationLog = {
       sender_id: rodrigo.id,
       sender_name: 'Rodri.GO',
-      recipient_number: formattedNumber,
+      recipient_number: cleanNumber,
       message_content: message,
       message_type: message_type,
       context_type: context_type,
@@ -191,7 +187,7 @@ serve(async (req) => {
       metadata: {
         ...metadata,
         original_number: to_number,
-        formatted_number: formattedNumber,
+        clean_number: cleanNumber,
         sent_at: new Date().toISOString(),
         request_id: requestId,
         whapi_response: whapiResult,
@@ -216,7 +212,7 @@ serve(async (req) => {
       sender: 'Rodri.GO',
       sender_number: rodrigo.whatsapp_number,
       context_type: context_type,
-      formatted_number: formattedNumber
+      clean_number: cleanNumber
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
